@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Nick's Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f5f0e8;
+    --cream2: #ede7d9;
+    --cream3: #e4ddd0;
+    --green: #1a3d2b;
+    --green2: #2a5c40;
+    --green3: #3a7a56;
+    --gold: #8a7340;
+    --gold-light: #b09a60;
+    --text: #1a3d2b;
+    --muted: #5a7a65;
+    --muted2: #7a9a85;
+    --border: #c8bfa8;
+    --border2: #b8ad98;
+    --red: #8b2e2e;
+    --serif: 'Playfair Display', Georgia, serif;
+    --body: 'EB Garamond', Georgia, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--cream); color: var(--text); font-family: var(--body); font-size: 16px; min-height: 100vh; padding: 0 0 130px; }
+
+  /* ── HEADER ── */
+  header { background: var(--green); padding: 14px 14px 12px; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 10; }
+  .hdr-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 8px; margin-bottom: 6px; }
+  .hdr-center { text-align: center; }
+  .hdr-eyebrow { font-family: var(--body); font-size: 9px; letter-spacing: 0.22em; color: var(--muted2); text-transform: uppercase; margin-bottom: 2px; font-style: italic; }
+  .hdr-name { font-family: var(--serif); font-size: 21px; color: #f5f0e8; font-weight: 400; letter-spacing: 0.03em; white-space: nowrap; }
+  .hdr-date { font-family: var(--body); font-size: 10px; color: var(--muted2); margin-top: 2px; font-style: italic; text-align: center; }
+
+  /* ── TASKS PANEL ── */
+  .tasks-panel { text-align: left; }
+  .panel-lbl { font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted2); font-family: var(--body); margin-bottom: 5px; font-style: italic; }
+  .task-list { list-style: none; }
+  .task-item { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 3px; }
+  .task-chk { width: 13px; height: 13px; accent-color: var(--gold); cursor: pointer; flex-shrink: 0; margin-top: 2px; }
+  .task-txt { font-size: 11px; color: var(--cream2); font-family: var(--body); line-height: 1.3; cursor: pointer; }
+  .task-txt.done { text-decoration: line-through; color: var(--muted2); }
+  .task-add-row { display: flex; gap: 4px; margin-top: 5px; }
+  .task-input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: var(--cream2); font-family: var(--body); font-size: 11px; padding: 4px 6px; outline: none; min-width: 0; }
+  .task-input::placeholder { color: var(--muted2); font-style: italic; }
+  .task-input:focus { border-color: var(--gold); }
+  .task-go { background: none; border: 1px solid rgba(255,255,255,0.15); color: var(--gold); font-size: 14px; width: 22px; height: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; touch-action: manipulation; }
+  .task-go:active { background: rgba(255,255,255,0.08); }
+
+  /* ── QUOTE PANEL ── */
+  .quote-panel { text-align: right; }
+  .quote-text { font-family: var(--body); font-size: 10px; color: var(--cream2); line-height: 1.45; font-style: italic; opacity: 0.85; }
+  .quote-attr { font-size: 9px; color: var(--muted2); font-family: var(--body); margin-top: 4px; letter-spacing: 0.04em; }
+
+  /* ── SCORECARD ── */
+  .card { margin: 14px 14px 0; border: 1px solid var(--border2); background: #faf7f0; }
+  .card-header { background: var(--green); display: grid; grid-template-columns: repeat(4,1fr); }
+  .sc { padding: 10px 6px 8px; text-align: center; border-right: 1px solid rgba(255,255,255,0.08); }
+  .sc:last-child { border-right: none; }
+  .sc-v { font-family: var(--serif); font-size: 20px; font-weight: 500; color: #f5f0e8; line-height: 1; margin-bottom: 3px; }
+  .sc-v.over { color: #f0a080; }
+  .sc-l { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted2); font-family: var(--body); }
+  .progress-row { background: var(--cream2); padding: 7px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .prog-lbl { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-family: var(--body); white-space: nowrap; }
+  .prog-bar { flex:1; height: 3px; background: var(--border); overflow: hidden; }
+  .prog-fill { height: 100%; background: var(--green3); transition: width 0.35s; width: 0%; }
+  .prog-num { font-size: 10px; color: var(--muted); font-family: var(--body); white-space: nowrap; font-style: italic; }
+
+  /* ── SECTIONS ── */
+  .section { margin: 14px 14px 0; border: 1px solid var(--border2); background: #faf7f0; }
+  .sec-hdr { background: var(--green2); padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+  .sec-title { font-family: var(--serif); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream2); font-weight: 400; font-style: italic; }
+  .chev { color: var(--muted2); font-size: 9px; transition: transform 0.2s; }
+  .sec-hdr.col .chev { transform: rotate(-90deg); }
+  .sec-body.hidden { display: none; }
+
+  /* ── FOOD ROWS ── */
+  .food-row { display: flex; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--cream3); gap: 8px; }
+  .food-row:last-child { border-bottom: none; }
+  .food-info { flex:1; min-width:0; }
+  .food-name { font-family: var(--body); font-size: 14px; color: var(--text); line-height: 1.2; }
+  .food-sub { font-size: 11px; color: var(--muted); font-style: italic; margin-top: 1px; }
+  .food-meta { text-align: right; flex-shrink: 0; }
+  .food-cal { font-family: var(--serif); font-size: 14px; color: var(--green); }
+  .food-pro { font-size: 10px; color: var(--muted2); font-style: italic; margin-top: 1px; }
+  .del-btn { background: none; border: none; color: var(--border2); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; touch-action: manipulation; transition: color 0.15s; }
+  .del-btn:active { color: var(--red); }
+
+  .qty-wrap { display: flex; align-items: center; gap: 5px; }
+  .qty-btn { width: 26px; height: 26px; border: 1px solid var(--border2); border-radius: 1px; background: var(--cream2); color: var(--green); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.12s; touch-action: manipulation; flex-shrink: 0; }
+  .qty-btn:active { background: var(--cream3); }
+  .qty-n { font-family: var(--serif); font-size: 15px; min-width: 16px; text-align: center; color: var(--muted2); }
+  .qty-n.on { color: var(--green); font-weight: 600; }
+
+  /* ── ACTIVITY ROWS ── */
+  .act-row { display: flex; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--cream3); gap: 10px; cursor: pointer; }
+  .act-row:last-child { border-bottom: none; }
+  .act-chk { width: 16px; height: 16px; accent-color: var(--green2); cursor: pointer; flex-shrink: 0; }
+  .act-info { flex:1; }
+  .act-name { font-family: var(--body); font-size: 14px; color: var(--text); }
+  .act-name.dim { color: var(--muted); font-style: italic; }
+  .act-cal { font-family: var(--serif); font-size: 13px; color: var(--muted); }
+
+  /* ── CUSTOM ADD ── */
+  .custom-wrap { border-top: 1px solid var(--border); padding: 10px 12px; background: var(--cream2); }
+  .custom-fields { display: flex; gap: 6px; margin-bottom: 7px; }
+  .custom-fields input { background: #faf7f0; border: 1px solid var(--border2); color: var(--text); font-family: var(--body); font-size: 13px; padding: 7px 8px; outline: none; }
+  .custom-fields input:focus { border-color: var(--green2); }
+  .custom-fields input::placeholder { color: var(--muted2); font-style: italic; }
+  .inp-name { flex:1; }
+  .inp-sm { width: 56px; }
+  .add-btn { width: 100%; padding: 8px; background: var(--green); border: none; color: var(--cream2); font-family: var(--body); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; font-style: italic; transition: background 0.15s; }
+  .add-btn:active { background: var(--green2); }
+
+  .reset-wrap { text-align: center; padding: 14px 0 4px; }
+  .reset-btn { background: none; border: none; font-family: var(--body); font-size: 12px; color: var(--muted2); cursor: pointer; font-style: italic; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ── CLAUDE DOCK ── */
+  .dock { position: fixed; bottom:0; left:0; right:0; background: var(--green); border-top: 2px solid var(--gold); padding: 10px 14px 24px; z-index: 20; }
+  .dock-hint { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted2); font-family: var(--body); margin-bottom: 7px; font-style: italic; }
+  .dock-row { display: flex; gap: 8px; align-items: flex-end; }
+  .dock-input { flex:1; background: #faf7f0; border: 1px solid var(--border2); color: var(--text); font-family: var(--body); font-size: 14px; padding: 8px 11px; outline: none; resize: none; max-height: 90px; line-height: 1.4; }
+  .dock-input:focus { border-color: var(--gold); }
+  .dock-input::placeholder { color: var(--muted2); font-style: italic; }
+  .dock-send { width: 38px; height: 38px; background: var(--gold); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; touch-action: manipulation; }
+  .dock-send:active { background: var(--gold-light); }
+  .dock-send svg { width: 15px; height: 15px; fill: #faf7f0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-top">
+
+    <!-- TASKS -->
+    <div class="tasks-panel">
+      <div class="panel-lbl">Today's Tasks</div>
+      <ul class="task-list" id="task-list"></ul>
+      <div class="task-add-row">
+        <input class="task-input" type="text" id="task-inp" placeholder="Add task..." onkeydown="taskKey(event)" />
+        <button class="task-go" onclick="addTask()" aria-label="Add task">+</button>
+      </div>
+    </div>
+
+    <!-- TITLE -->
+    <div class="hdr-center">
+      <div class="hdr-eyebrow">Daily Log</div>
+      <div class="hdr-name">Nick's Tracker</div>
+    </div>
+
+    <!-- QUOTE -->
+    <div class="quote-panel">
+      <div class="quote-text" id="quote-text"></div>
+      <div class="quote-attr" id="quote-attr"></div>
+    </div>
+
+  </div>
+  <div class="hdr-date" id="date-label"></div>
+</header>
+
+<!-- SCORECARD -->
+<div class="card">
+  <div class="card-header">
+    <div class="sc"><div class="sc-v" id="s-in">0</div><div class="sc-l">Eaten</div></div>
+    <div class="sc"><div class="sc-v" id="s-burn">0</div><div class="sc-l">Burned</div></div>
+    <div class="sc"><div class="sc-v" id="s-def">0</div><div class="sc-l">Deficit</div></div>
+    <div class="sc"><div class="sc-v" id="s-pro">0g</div><div class="sc-l">Protein</div></div>
+  </div>
+  <div class="progress-row">
+    <span class="prog-lbl">Target</span>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+    <span class="prog-num" id="prog-num">0 / 500</span>
+  </div>
+</div>
+
+<!-- MEALS -->
+<div class="section" id="sec-meals">
+  <div class="sec-hdr" onclick="toggleSec('meals')"><span class="sec-title">Meals &amp; Food</span><span class="chev">▾</span></div>
+  <div class="sec-body" id="body-meals"></div>
+  <div class="custom-wrap">
+    <div class="custom-fields">
+      <input class="inp-name" type="text" id="c-name" placeholder="Custom item..." />
+      <input class="inp-sm" type="number" id="c-cal" placeholder="cal" inputmode="numeric" />
+      <input class="inp-sm" type="number" id="c-pro" placeholder="pro" inputmode="numeric" />
+    </div>
+    <button class="add-btn" onclick="addCustom()">Add to Card</button>
+  </div>
+</div>
+
+<!-- ACTIVITY -->
+<div class="section" id="sec-act">
+  <div class="sec-hdr" onclick="toggleSec('act')"><span class="sec-title">Activity</span><span class="chev">▾</span></div>
+  <div class="sec-body" id="body-act"></div>
+</div>
+
+<div class="reset-wrap"><button class="reset-btn" onclick="resetAll()">Reset today's card</button></div>
+
+<!-- CLAUDE DOCK -->
+<div class="dock">
+  <div class="dock-hint">Ask Claude</div>
+  <div class="dock-row">
+    <textarea class="dock-input" id="dock-txt" rows="1" placeholder="Add a food, adjust calories, ask anything..." oninput="autoGrow(this)" onkeydown="onKey(event)"></textarea>
+    <button class="dock-send" onclick="send()" aria-label="Send to Claude">
+      <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+/* ── FOOD DATA ── */
+const FOODS=[
+  {id:'burrito',name:'Breakfast burrito',sub:'3 eggs · turkey sausage · XL tortilla',cal:730,protein:39},
+  {id:'oikos',name:'Oikos Pro',sub:'vanilla',cal:130,protein:20},
+  {id:'creamer',name:'Starbucks brown sugar creamer',sub:'2 tbsp',cal:80,protein:0},
+  {id:'rollup',name:'Roll-up',sub:"Boar's Head maple turkey + HT cheese stick",cal:115,protein:14},
+  {id:'clementine',name:'Clementine',sub:'1 piece',cal:35,protein:0},
+  {id:'smoothie',name:'Smoothie',sub:'strawberries/blueberries · light OJ · Oikos Pro · banana',cal:377,protein:20},
+  {id:'wf-tray',name:'Whole Foods tray',sub:'scallopini · broccoli · fingerling potatoes',cal:640,protein:50},
+  {id:'scallopini',name:'Chicken scallopini',sub:'~6oz breast',cal:320,protein:40},
+  {id:'pasta',name:'Pasta dinner',sub:"pasta · Newman's marinara · WF meatball",cal:555,protein:27},
+  {id:'kashi',name:'Kashi Go + Fairlife',sub:'evening snack',cal:280,protein:17},
+  {id:'turkey',name:'Deli turkey slices',sub:'3–4oz',cal:120,protein:22},
+  {id:'sourdough',name:'Sourdough slice',sub:'100 cal / slice',cal:100,protein:3},
+  {id:'cheddar',name:'Cheddar slice',sub:'1 slice',cal:110,protein:7},
+  {id:'tortilla',name:'Flour tortilla',sub:'large',cal:130,protein:3},
+  {id:'jerky',name:'Jerky',sub:'1 oz',cal:80,protein:10},
+  {id:'sc-wrap',name:'Scallopini tortilla wrap',sub:'scallopini + cheddar + tortilla',cal:530,protein:50},
+];
+
+/* ── ACTIVITY DATA ── */
+const ACTS=[
+  {id:'tdee',name:'Base TDEE',sub:"6'2\" · 205 lbs · 27yo",cal:2900,always:true},
+  {id:'bike40',name:'Bike 40 min @ 150W',cal:565},
+  {id:'bike25',name:'Bike 25 min @ 150W',cal:350},
+  {id:'pt30',name:'Light PT 30 min',cal:100},
+  {id:'walk1',name:'Dog walk ~1 mile',cal:115},
+  {id:'walk05',name:'Dog walk ~0.5 mile',cal:60},
+];
+
+/* ── QUOTES ── */
+const QUOTES=[
+  {text:"The impediment to action advances action. What stands in the way becomes the way.",attr:"Marcus Aurelius"},
+  {text:"Do not pray for an easy life, pray for the strength to endure a difficult one.",attr:"Bruce Lee"},
+  {text:"We suffer more in imagination than in reality.",attr:"Seneca"},
+  {text:"Hard choices, easy life. Easy choices, hard life.",attr:"Jerzy Gregorek"},
+  {text:"Waste no more time arguing what a good man should be. Be one.",attr:"Marcus Aurelius"},
+  {text:"The first and greatest victory is to conquer yourself.",attr:"Plato"},
+  {text:"Difficulty is what wakes up the genius.",attr:"Nassim Taleb"},
+  {text:"It does not matter how slowly you go so long as you do not stop.",attr:"Confucius"},
+  {text:"Suffer the pain of discipline or suffer the pain of regret.",attr:"Jim Rohn"},
+  {text:"He who has a why to live can bear almost any how.",attr:"Nietzsche"},
+  {text:"The cave you fear to enter holds the treasure you seek.",attr:"Joseph Campbell"},
+  {text:"Strength does not come from winning. Your struggles develop your strengths.",attr:"Arnold Schwarzenegger"},
+  {text:"Every action you take is a vote for the type of person you wish to become.",attr:"James Clear"},
+  {text:"You don't rise to the level of your goals. You fall to the level of your systems.",attr:"James Clear"},
+  {text:"Be who you are and say what you feel, because those who mind don't matter.",attr:"Dr. Seuss"},
+  {text:"Comfort is the enemy of progress.",attr:"P.T. Barnum"},
+  {text:"A ship is safe in harbor, but that's not what ships are for.",attr:"John Shedd"},
+  {text:"The quality of a person's life is in direct proportion to their commitment to excellence.",attr:"Vince Lombardi"},
+  {text:"Between stimulus and response there is a space. In that space is our power to choose.",attr:"Viktor Frankl"},
+  {text:"Most people do not listen with the intent to understand; they listen with the intent to reply.",attr:"Stephen Covey"},
+  {text:"In the middle of every difficulty lies opportunity.",attr:"Albert Einstein"},
+  {text:"Discipline is the bridge between goals and accomplishment.",attr:"Jim Rohn"},
+  {text:"You will never always be motivated. You have to learn to be disciplined.",attr:""},
+  {text:"Talent is cheaper than table salt. What separates the talented individual from the successful one is hard work.",attr:"Stephen King"},
+  {text:"The man who moves a mountain begins by carrying away small stones.",attr:"Confucius"},
+  {text:"What you do every day matters more than what you do once in a while.",attr:"Gretchen Rubin"},
+  {text:"Absorb what is useful, discard what is useless, add what is essentially your own.",attr:"Bruce Lee"},
+  {text:"Perfection is the enemy of progress.",attr:"Winston Churchill"},
+  {text:"A good plan violently executed now is better than a perfect plan executed next week.",attr:"George Patton"},
+  {text:"The secret of getting ahead is getting started.",attr:"Mark Twain"},
+  {text:"Do what you can, with what you have, where you are.",attr:"Theodore Roosevelt"},
+];
+
+/* ── STATE ── */
+let custom=[],qty={},acts={},col={},tasks=[];
+const deletedIds=new Set();
+
+/* ── PERSISTENCE ── */
+function load(){
+  const today=new Date().toDateString();
+  try{
+    const s=JSON.parse(localStorage.getItem('nt4')||'{}');
+    if(s.date===today){qty=s.qty||{};acts=s.acts||{};custom=s.custom||[];tasks=s.tasks||[];}
+    else{tasks=[];}
+    const d=JSON.parse(localStorage.getItem('nt4_del')||'[]');
+    d.forEach(id=>deletedIds.add(id));
+  }catch(e){}
+}
+function save(){
+  const today=new Date().toDateString();
+  localStorage.setItem('nt4',JSON.stringify({date:today,qty,acts,custom,tasks}));
+  localStorage.setItem('nt4_del',JSON.stringify([...deletedIds]));
+}
+
+/* ── DATE ── */
+function renderDate(){
+  document.getElementById('date-label').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+}
+
+/* ── QUOTE ── */
+function renderQuote(){
+  const day=new Date().getDate();
+  const q=QUOTES[day % QUOTES.length];
+  document.getElementById('quote-text').textContent='\u201c'+q.text+'\u201d';
+  document.getElementById('quote-attr').textContent=q.attr ? '\u2014 '+q.attr : '';
+}
+
+/* ── TASKS ── */
+function renderTasks(){
+  const el=document.getElementById('task-list');
+  if(!tasks.length){el.innerHTML='<li style="font-size:10px;color:var(--muted2);font-style:italic;font-family:var(--body);">No tasks yet</li>';return;}
+  el.innerHTML=tasks.map((t,i)=>`
+    <li class="task-item">
+      <input class="task-chk" type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i})" onclick="event.stopPropagation()"/>
+      <span class="task-txt ${t.done?'done':''}" onclick="toggleTask(${i})">${t.text}</span>
+      <button onclick="deleteTask(${i})" style="background:none;border:none;color:var(--muted2);font-size:12px;cursor:pointer;padding:0 0 0 3px;line-height:1;touch-action:manipulation;" aria-label="Remove task">×</button>
+    </li>`).join('');
+}
+function addTask(){
+  const inp=document.getElementById('task-inp');
+  const txt=inp.value.trim();
+  if(!txt)return;
+  tasks.push({text:txt,done:false});
+  inp.value='';
+  save();renderTasks();
+}
+function toggleTask(i){tasks[i].done=!tasks[i].done;save();renderTasks();}
+function deleteTask(i){tasks.splice(i,1);save();renderTasks();}
+function taskKey(e){if(e.key==='Enter'){e.preventDefault();addTask();}}
+
+/* ── MEALS ── */
+function renderMeals(){
+  const base=FOODS.filter(f=>!deletedIds.has(f.id));
+  const all=[...base,...custom];
+  document.getElementById('body-meals').innerHTML=all.map(f=>{
+    const q=qty[f.id]||0;
+    const isCustom=custom.some(c=>c.id===f.id);
+    const delBtn=`<button class="del-btn" onclick="delItem('${f.id}',${isCustom})" aria-label="Remove">×</button>`;
+    return`<div class="food-row" id="fr-${f.id}">
+      <div class="qty-wrap">
+        <button class="qty-btn" ontouchstart="" onclick="chQty('${f.id}',-1)">−</button>
+        <span class="qty-n ${q>0?'on':''}">${q}</span>
+        <button class="qty-btn" ontouchstart="" onclick="chQty('${f.id}',1)">+</button>
+      </div>
+      <div class="food-info"><div class="food-name">${f.name}</div>${f.sub?`<div class="food-sub">${f.sub}</div>`:''}</div>
+      <div class="food-meta"><div class="food-cal">${f.cal}</div><div class="food-pro">${f.protein}g</div></div>
+      ${delBtn}
+    </div>`;
+  }).join('');
+  update();
+}
+
+function delItem(id,isCustom){
+  if(isCustom){
+    custom=custom.filter(c=>c.id!==id);
+  } else {
+    deletedIds.add(id);
+  }
+  delete qty[id];
+  save();renderMeals();
+}
+
+/* ── ACTIVITY ── */
+function renderActs(){
+  document.getElementById('body-act').innerHTML=ACTS.map(a=>{
+    const chk=a.always||acts[a.id];
+    return`<div class="act-row" onclick="${a.always?'':` tAct('${a.id}')`}">
+      <input class="act-chk" type="checkbox" ${chk?'checked':''} ${a.always?'disabled':''} onchange="tAct('${a.id}')" onclick="event.stopPropagation()"/>
+      <div class="act-info"><div class="act-name ${a.always?'dim':''}">${a.name}</div>${a.sub?`<div class="food-sub">${a.sub}</div>`:''}</div>
+      <div class="act-cal">${a.always?'':'+'}${a.cal.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+  update();
+}
+
+function chQty(id,d){qty[id]=Math.max(0,(qty[id]||0)+d);save();renderMeals();}
+function tAct(id){const a=ACTS.find(x=>x.id===id);if(!a||a.always)return;acts[id]=!acts[id];save();renderActs();}
+
+/* ── SUMMARY ── */
+function update(){
+  const base=FOODS.filter(f=>!deletedIds.has(f.id));
+  const all=[...base,...custom];
+  let cal=0,pro=0;
+  all.forEach(f=>{const q=qty[f.id]||0;cal+=f.cal*q;pro+=(f.protein||0)*q;});
+  let burn=0;
+  ACTS.forEach(a=>{if(a.always||acts[a.id])burn+=a.cal;});
+  const def=burn-cal;
+  const pct=Math.min(100,Math.max(0,(def/500)*100));
+  document.getElementById('s-in').textContent=cal.toLocaleString();
+  document.getElementById('s-burn').textContent=burn.toLocaleString();
+  const el=document.getElementById('s-def');
+  el.textContent=def.toLocaleString();
+  el.className='sc-v'+(def<0?' over':'');
+  document.getElementById('s-pro').textContent=Math.round(pro)+'g';
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-num').textContent=def.toLocaleString()+' / 500';
+}
+
+/* ── CUSTOM ADD ── */
+function addCustom(){
+  const name=document.getElementById('c-name').value.trim();
+  const cal=parseInt(document.getElementById('c-cal').value);
+  const pro=parseInt(document.getElementById('c-pro').value)||0;
+  if(!name||isNaN(cal))return;
+  const id='cx'+Date.now();
+  custom.push({id,name,sub:'custom',cal,protein:pro});
+  qty[id]=1;
+  document.getElementById('c-name').value='';
+  document.getElementById('c-cal').value='';
+  document.getElementById('c-pro').value='';
+  save();renderMeals();
+}
+
+/* ── SECTIONS ── */
+function toggleSec(k){
+  col[k]=!col[k];
+  document.getElementById('body-'+k).classList.toggle('hidden',col[k]);
+  document.querySelector(`#sec-${k} .sec-hdr`).classList.toggle('col',col[k]);
+}
+
+/* ── RESET ── */
+function resetAll(){
+  if(!confirm("Reset today's card?"))return;
+  qty={};acts={};custom=[];tasks=[];
+  deletedIds.clear();
+  save();renderMeals();renderActs();renderTasks();
+}
+
+/* ── CLAUDE DOCK ── */
+function ctx(){
+  const base=FOODS.filter(f=>!deletedIds.has(f.id));
+  const all=[...base,...custom];
+  const eaten=all.filter(f=>(qty[f.id]||0)>0).map(f=>`${qty[f.id]}x ${f.name} (${f.cal*qty[f.id]} cal, ${(f.protein||0)*qty[f.id]}g protein)`).join(', ');
+  const active=ACTS.filter(a=>a.always||acts[a.id]).map(a=>`${a.name} (${a.cal} cal)`).join(', ');
+  const openTasks=tasks.filter(t=>!t.done).map(t=>t.text).join(', ');
+  return`[Nick's tracker — ${new Date().toDateString()}]\nEaten: ${eaten||'nothing yet'}\nActivity: ${active||'none'}\nTotals: ${document.getElementById('s-in').textContent} cal in · ${document.getElementById('s-burn').textContent} burned · ${document.getElementById('s-def').textContent} deficit · ${document.getElementById('s-pro').textContent} protein\n500 cal deficit target. Stats: 6'2", 205 lbs, 27yo.\nOpen tasks: ${openTasks||'none'}\n\n`;
+}
+function send(){
+  const msg=document.getElementById('dock-txt').value.trim();
+  if(!msg)return;
+  window.open('https://claude.ai/new?q='+encodeURIComponent(ctx()+msg),'_blank');
+  document.getElementById('dock-txt').value='';
+  document.getElementById('dock-txt').style.height='auto';
+}
+function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px';}
+function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+
+/* ── INIT ── */
+load();renderDate();renderQuote();renderTasks();renderMeals();renderActs();
+setInterval(renderDate,60000);
+</script>
+</body>
+</html>
