@@ -334,7 +334,14 @@ const deletedIds=new Set();
 const deletedActIds=new Set();
 let chatHistory=[];
 let fbDb=null, fbRef=null, drawerOpen=false, sending=false;
+let weight=205;
 const TODAY=new Date().toDateString();
+
+function calcTDEE(lbs){
+  const kg=lbs*0.453592;
+  const bmr=10*kg+6.25*187.96-5*27+5; // Mifflin-St Jeor, male, 6'2", 27yo
+  return Math.round(bmr*1.47);
+}
 
 /* ══════════════════════════════════════════
    FIREBASE
@@ -356,6 +363,7 @@ async function initFirebase(){
         custom=d.custom||[];
         customActs=d.customActs||[];
         tasks=d.tasks||[];
+        if(d.weight)weight=d.weight;
         const del=d.deleted||[];
         deletedIds.clear();
         del.forEach(id=>deletedIds.add(id));
@@ -375,7 +383,7 @@ async function initFirebase(){
 }
 
 function saveData(){
-  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],date:TODAY};
+  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,date:TODAY};
   if(fbRef){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
       set(fbRef,data).catch(()=>{});
@@ -389,6 +397,7 @@ function loadLocal(){
     const s=JSON.parse(localStorage.getItem('nt5')||'{}');
     if(s.date===TODAY){
       qty=s.qty||{};acts=s.acts||{};custom=s.custom||[];customActs=s.customActs||[];tasks=s.tasks||[];
+      if(s.weight)weight=s.weight;
       (s.deleted||[]).forEach(id=>deletedIds.add(id));
       (s.deletedActs||[]).forEach(id=>deletedActIds.add(id));
     }
@@ -437,20 +446,32 @@ function renderMeals(){
 }
 
 function renderActs(){
+  const tdeeEntry=ACTS.find(a=>a.id==='tdee');
+  if(tdeeEntry)tdeeEntry.cal=calcTDEE(weight);
   const allActs=[...ACTS.filter(a=>!deletedActIds.has(a.id)),...customActs];
   document.getElementById('body-act').innerHTML=allActs.map(a=>{
     const chk=a.always||acts[a.id];
     const isCx=customActs.some(c=>c.id===a.id);
     const delBtn=(!a.always)?`<button class="act-del" onclick="delAct('${a.id}',${isCx})" aria-label="Remove">×</button>`:'';
+    const subHtml=a.id==='tdee'
+      ?`<div class="food-sub">6'2&quot; · <input type="number" id="weight-inp" value="${weight}" min="100" max="400" style="width:36px;border:none;border-bottom:1px solid var(--border2);background:transparent;font-family:var(--body);font-size:11px;color:var(--muted);text-align:center;outline:none;-moz-appearance:textfield;" onclick="event.stopPropagation()" onchange="updateWeight(+this.value)"> lbs · 27yo</div>`
+      :a.sub?`<div class="food-sub">${a.sub}</div>`:'';
     return`<div class="act-row" onclick="${a.always?'':` tAct('${a.id}')`}">
       <input class="act-chk" type="checkbox" ${chk?'checked':''} ${a.always?'disabled':''} onchange="tAct('${a.id}')" onclick="event.stopPropagation()"/>
-      <div class="act-info"><div class="act-name ${a.always?'dim':''}">${a.name}</div>${a.sub?`<div class="food-sub">${a.sub}</div>`:''}</div>
+      <div class="act-info"><div class="act-name ${a.always?'dim':''}">${a.name}</div>${subHtml}</div>
       <div class="act-cal">${a.always?'':'+'}${a.cal.toLocaleString()}</div>
       ${delBtn}
     </div>`;
   }).join('');
   update();
 }
+
+window.updateWeight=(lbs)=>{
+  if(!lbs||lbs<100||lbs>400)return;
+  weight=lbs;
+  saveData();
+  renderActs();
+};
 
 function update(){
   const base=FOODS.filter(f=>!deletedIds.has(f.id));
@@ -640,35 +661,27 @@ async function fetchGolf(){
   const el=document.getElementById('golf-widget');
   el.innerHTML='<div class="golf-status">fetching…</div>';
   try{
-    const res=await fetch('/.netlify/functions/claude',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        system:`You are a golf data assistant. Use web search to get the current PGA Tour leaderboard. 
-Return ONLY a JSON object (no markdown, no explanation) in this exact format:
-{
-  "event": "Tournament Name",
-  "status": "live|completed|upcoming",
-  "round": "R1|R2|R3|R4|Final|Starting Thu",
-  "players": [
-    {"pos": "1", "name": "Player Name", "score": "-10", "thru": "F"},
-    {"pos": "2", "name": "Player Name", "score": "-8", "thru": "14"},
-    ...up to 5 players
-  ]
-}
-For score: use "-10" for under par, "+3" for over par, "E" for even. 
-If tournament hasn't started yet, set status to "upcoming" and players to [].
-Today is ${new Date().toDateString()}.`,
-        messages:[{role:'user',content:'Get me the current PGA Tour leaderboard top 5. Use web search. Return only the JSON.'}]
-      })
-    });
+    const res=await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard');
     const data=await res.json();
-    const textBlocks=(data.content||[]).filter(b=>b.type==='text');
-    const raw=textBlocks.map(b=>b.text).join('').trim();
-    // strip any markdown fences
-    const cleaned=raw.replace(/```json|```/g,'').trim();
-    const json=JSON.parse(cleaned);
-    renderGolf(json);
+    const event=data.events?.[0];
+    if(!event){el.innerHTML='<div class="golf-status">no tournament</div>';return;}
+    const comp=event.competitions?.[0];
+    const competitors=comp?.competitors||[];
+    const sorted=[...competitors].sort((a,b)=>(a.sortOrder??999)-(b.sortOrder??999));
+    const statusState=comp?.status?.type?.state||'';
+    const round=comp?.status?.type?.shortDetail||'';
+    const players=sorted.slice(0,5).map(c=>{
+      const raw=c.score?.displayValue||'E';
+      const score=raw==='0'?'E':raw;
+      const thru=statusState==='post'?'F':(c.status?.thru!=null?String(c.status.thru):'');
+      return{
+        pos:c.status?.position?.displayName||String(c.sortOrder||''),
+        name:c.athlete?.displayName||'—',
+        score,
+        thru
+      };
+    });
+    renderGolf({event:event.shortName||event.name,status:statusState,round,players});
   }catch(e){
     el.innerHTML='<div class="golf-status">unavailable</div>';
   }
