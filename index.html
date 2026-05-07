@@ -29,21 +29,21 @@
   .hdr-date{font-family:var(--body);font-size:9px;color:var(--muted2);margin-top:2px;font-style:italic;text-align:center;}
 
   /* TASKS */
-  .tasks-panel{text-align:left;}
+  .tasks-panel{text-align:left;min-width:0;}
   .panel-lbl{font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);margin-bottom:5px;font-style:italic;}
   .task-list{list-style:none;}
   .task-item{display:flex;align-items:flex-start;gap:5px;margin-bottom:3px;}
   .task-chk{width:13px;height:13px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;margin-top:2px;}
   .task-txt{font-size:11px;color:var(--cream2);font-family:var(--body);line-height:1.3;cursor:pointer;flex:1;}
   .task-txt.done{text-decoration:line-through;color:var(--muted2);}
-  .task-add-row{display:flex;gap:4px;margin-top:5px;}
+  .task-add-row{display:flex;gap:4px;margin-top:5px;max-width:120px;}
   .task-input{flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:var(--cream2);font-family:var(--body);font-size:11px;padding:4px 6px;outline:none;min-width:0;}
   .task-input::placeholder{color:var(--muted2);font-style:italic;}
   .task-input:focus{border-color:var(--gold);}
   .task-go{background:none;border:1px solid rgba(255,255,255,0.15);color:var(--gold);font-size:14px;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;}
 
   /* QUOTE */
-  .quote-panel{text-align:right;}
+  .quote-panel{text-align:right;min-width:0;}
   .quote-text{font-family:var(--body);font-size:10px;color:var(--cream2);line-height:1.45;font-style:italic;opacity:0.85;}
   .quote-attr{font-size:9px;color:var(--muted2);font-family:var(--body);margin-top:4px;letter-spacing:0.04em;}
 
