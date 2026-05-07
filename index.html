@@ -29,9 +29,12 @@
   .hdr-date{font-family:var(--body);font-size:9px;color:var(--muted2);margin-top:2px;font-style:italic;text-align:center;}
 
   /* TASKS */
-  .tasks-panel{text-align:left;min-width:0;}
+  .tasks-panel{text-align:left;min-width:0;align-self:center;}
   .panel-lbl{font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);margin-bottom:5px;font-style:italic;}
-  .task-list{list-style:none;}
+  .task-list{list-style:none;max-height:104px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--gold) transparent;}
+  .task-list::-webkit-scrollbar{width:3px;}
+  .task-list::-webkit-scrollbar-thumb{background:var(--gold);border-radius:2px;}
+  .task-list::-webkit-scrollbar-track{background:transparent;}
   .task-item{display:flex;align-items:flex-start;gap:5px;margin-bottom:3px;}
   .task-chk{width:13px;height:13px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;margin-top:2px;}
   .task-txt{font-size:11px;color:var(--cream2);font-family:var(--body);line-height:1.3;cursor:pointer;flex:1;}
@@ -198,7 +201,7 @@
   <div class="progress-row">
     <span class="prog-lbl">Target</span>
     <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
-    <span class="prog-num" id="prog-num">0 / 500</span>
+    <span class="prog-num"><span id="prog-def">0</span> / <input type="number" id="target-inp" value="500" min="100" max="9999" inputmode="numeric" onchange="updateTarget(+this.value)" style="width:36px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:var(--body);font-size:10px;color:var(--muted);text-align:center;outline:none;-moz-appearance:textfield;"></span>
   </div>
 </div>
 
@@ -334,7 +337,7 @@ const deletedIds=new Set();
 const deletedActIds=new Set();
 let chatHistory=[];
 let fbDb=null, fbRef=null, drawerOpen=false, sending=false;
-let weight=205;
+let weight=205, calorieTarget=500;
 const TODAY=new Date().toDateString();
 
 function calcTDEE(lbs){
@@ -364,6 +367,8 @@ async function initFirebase(){
         customActs=d.customActs||[];
         tasks=d.tasks||[];
         if(d.weight)weight=d.weight;
+        if(d.calorieTarget)calorieTarget=d.calorieTarget;
+        const tinp=document.getElementById('target-inp');if(tinp)tinp.value=calorieTarget;
         const del=d.deleted||[];
         deletedIds.clear();
         del.forEach(id=>deletedIds.add(id));
@@ -383,7 +388,7 @@ async function initFirebase(){
 }
 
 function saveData(){
-  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,date:TODAY};
+  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,date:TODAY};
   if(fbRef){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
       set(fbRef,data).catch(()=>{});
@@ -398,6 +403,7 @@ function loadLocal(){
     if(s.date===TODAY){
       qty=s.qty||{};acts=s.acts||{};custom=s.custom||[];customActs=s.customActs||[];tasks=s.tasks||[];
       if(s.weight)weight=s.weight;
+      if(s.calorieTarget)calorieTarget=s.calorieTarget;
       (s.deleted||[]).forEach(id=>deletedIds.add(id));
       (s.deletedActs||[]).forEach(id=>deletedActIds.add(id));
     }
@@ -473,6 +479,13 @@ window.updateWeight=(lbs)=>{
   renderActs();
 };
 
+window.updateTarget=(val)=>{
+  if(!val||val<100||val>9999)return;
+  calorieTarget=val;
+  saveData();
+  update();
+};
+
 function update(){
   const base=FOODS.filter(f=>!deletedIds.has(f.id));
   const all=[...base,...custom];
@@ -482,7 +495,7 @@ function update(){
   const allActs=[...ACTS.filter(a=>!deletedActIds.has(a.id)),...customActs];
   allActs.forEach(a=>{if(a.always||acts[a.id])burn+=a.cal;});
   const def=burn-cal;
-  const pct=Math.min(100,Math.max(0,(def/500)*100));
+  const pct=Math.min(100,Math.max(0,(def/calorieTarget)*100));
   document.getElementById('s-in').textContent=cal.toLocaleString();
   document.getElementById('s-burn').textContent=burn.toLocaleString();
   const el=document.getElementById('s-def');
@@ -490,7 +503,7 @@ function update(){
   el.className='sc-v'+(def<0?' over':'');
   document.getElementById('s-pro').textContent=Math.round(pro)+'g';
   document.getElementById('prog-fill').style.width=pct+'%';
-  document.getElementById('prog-num').textContent=def.toLocaleString()+' / 500';
+  document.getElementById('prog-def').textContent=def.toLocaleString();
 }
 
 /* ══════════════════════════════════════════
@@ -546,8 +559,9 @@ window.toggleSec=(k)=>{
 };
 
 window.resetAll=()=>{
-  if(!confirm("Reset today's card? All quantities and activity checks will be cleared."))return;
-  qty={};acts={};
+  if(!confirm("Reset quantities? Food counts will be zeroed and activities unchecked. Nothing will be added or removed from your list."))return;
+  Object.keys(qty).forEach(id=>{ qty[id]=0; });
+  Object.keys(acts).forEach(id=>{ acts[id]=false; });
   saveData();renderMeals();renderActs();
 };
 
@@ -576,7 +590,7 @@ function buildSystemPrompt(){
 
   return `You are an embedded assistant inside Nick's personal daily tracker app. You have full context of his day.
 
-NICK'S STATS: Male, 6'2", ~205 lbs, 28 years old, recovering from shoulder surgery (limited left arm use). Daily deficit target: 500 calories. Protein goal: 200g/day. Base TDEE ~2,900 cal.
+NICK'S STATS: Male, 6'2", ~205 lbs, 28 years old, recovering from shoulder surgery (limited left arm use). Daily deficit target: ${calorieTarget} calories. Protein goal: 200g/day. Base TDEE ~2,900 cal.
 
 TODAY'S LOG (${TODAY}):
 - Eaten: ${eaten}
@@ -667,15 +681,17 @@ async function fetchGolf(){
     if(!event){el.innerHTML='<div class="golf-status">no tournament</div>';return;}
     const comp=event.competitions?.[0];
     const competitors=comp?.competitors||[];
-    const sorted=[...competitors].sort((a,b)=>(a.sortOrder??999)-(b.sortOrder??999));
+    const sorted=[...competitors].sort((a,b)=>(a.order??999)-(b.order??999));
     const statusState=comp?.status?.type?.state||'';
     const round=comp?.status?.type?.shortDetail||'';
     const players=sorted.slice(0,5).map(c=>{
-      const raw=c.score?.displayValue||'E';
-      const score=raw==='0'?'E':raw;
-      const thru=statusState==='post'?'F':(c.status?.thru!=null?String(c.status.thru):'');
+      const raw=c.score||'E';
+      const score=(raw==='0'||raw===0)?'E':String(raw);
+      const currentRoundLS=[...(c.linescores||[])].reverse().find(ls=>ls.linescores?.length>0);
+      const holesPlayed=currentRoundLS?.linescores?.length;
+      const thru=statusState==='post'?'F':(holesPlayed!=null?String(holesPlayed):(c.status?.thru!=null?String(c.status.thru):''));
       return{
-        pos:c.status?.position?.displayName||String(c.sortOrder||''),
+        pos:c.status?.position?.displayName||String(c.order||''),
         name:c.athlete?.displayName||'—',
         score,
         thru
