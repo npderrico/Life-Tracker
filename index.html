@@ -65,6 +65,21 @@
   .golf-refresh{background:none;border:none;color:var(--muted2);font-size:9px;cursor:pointer;font-family:var(--body);font-style:italic;text-decoration:underline;text-underline-offset:2px;padding:0;touch-action:manipulation;}
   .golf-refresh:active{color:var(--gold-light);}
 
+  /* WEEK CHART */
+  .week-chart{margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px;}
+  .week-chart-lbl{font-size:7px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);margin-bottom:4px;font-style:italic;}
+  .week-cols{display:flex;gap:1px;}
+  .week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;}
+  .week-col-name{font-size:7px;color:var(--muted2);font-family:var(--body);line-height:1;}
+  .week-col.is-today .week-col-name{color:var(--gold-light);}
+  .week-bar-track{width:100%;height:24px;display:flex;align-items:flex-end;justify-content:center;}
+  .week-bar{width:7px;border-radius:1px 1px 0 0;transition:height 0.4s;}
+  .week-bar.good{background:var(--green3);}
+  .week-bar.surplus{background:var(--red);}
+  .week-col.is-today .week-bar{background:var(--gold);}
+  .week-col-val{font-size:7px;color:var(--muted2);font-family:var(--body);}
+  .week-col.is-today .week-col-val{color:var(--gold-light);}
+
   /* SCORECARD */
   .card{margin:0 14px 0;border:1px solid var(--border2);background:#faf7f0;position:sticky;top:0;z-index:9;}
   .card-header{background:var(--green);display:grid;grid-template-columns:repeat(4,1fr);}
@@ -171,6 +186,7 @@
         <input class="task-input" type="text" id="task-inp" placeholder="Add task..." onkeydown="taskKey(event)"/>
         <button class="task-go" onclick="addTask()" aria-label="Add">+</button>
       </div>
+      <div class="week-chart" id="week-chart"></div>
     </div>
     <div class="hdr-center">
       <div class="hdr-eyebrow">Daily Log</div>
@@ -336,8 +352,9 @@ let custom=[],qty={},acts={},col={},tasks=[],customActs=[];
 const deletedIds=new Set();
 const deletedActIds=new Set();
 let chatHistory=[];
-let fbDb=null, fbRef=null, drawerOpen=false, sending=false;
+let fbDb=null, fbRef=null, fbRefFn=null, fbGetFn=null, drawerOpen=false, sending=false;
 let weight=205, calorieTarget=500;
+let currentDeficit=0, weeklyData={};
 const TODAY=new Date().toDateString();
 
 function calcTDEE(lbs){
@@ -353,9 +370,11 @@ async function initFirebase(){
   const syncBar=document.getElementById('sync-bar');
   try{
     const {initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const {getDatabase,ref,set,onValue}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    const {getDatabase,ref,set,onValue,get}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
     const app=initializeApp(FB_CONFIG);
     fbDb=getDatabase(app);
+    fbRefFn=ref;
+    fbGetFn=get;
     const dateKey=TODAY.replace(/ /g,'-');
     fbRef=ref(fbDb,`tracker/${dateKey}`);
     onValue(fbRef,(snap)=>{
@@ -376,10 +395,13 @@ async function initFirebase(){
         deletedActIds.clear();
         delActs.forEach(id=>deletedActIds.add(id));
         renderMeals();renderActs();renderTasks();
+      } else {
+        seedFromYesterday();
       }
       syncBar.textContent='✦ synced across devices';
       syncBar.className='sync-bar ok';
     });
+    fetchWeeklyData();
   }catch(e){
     syncBar.textContent='Offline — changes saved locally only';
     syncBar.className='sync-bar err';
@@ -388,7 +410,7 @@ async function initFirebase(){
 }
 
 function saveData(){
-  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,date:TODAY};
+  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,deficit:currentDeficit,date:TODAY};
   if(fbRef){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
       set(fbRef,data).catch(()=>{});
@@ -504,6 +526,12 @@ function update(){
   document.getElementById('s-pro').textContent=Math.round(pro)+'g';
   document.getElementById('prog-fill').style.width=pct+'%';
   document.getElementById('prog-def').textContent=def.toLocaleString();
+  currentDeficit=def;
+  weeklyData[TODAY.replace(/ /g,'-')]=def;
+  const todayValEl=document.getElementById('week-today-val');
+  if(todayValEl)todayValEl.textContent=fmtDef(def);
+  const todayBarEl=document.getElementById('week-today-bar');
+  if(todayBarEl){const pct2=Math.min(100,Math.max(0,(def/calorieTarget)*100));todayBarEl.style.height=Math.round(pct2*24/100)+'px';}
 }
 
 /* ══════════════════════════════════════════
@@ -724,6 +752,110 @@ function renderGolf(d){
   el.innerHTML=html;
 }
 
+
+/* ══════════════════════════════════════════
+   WEEK CHART
+══════════════════════════════════════════ */
+function fmtDef(v){
+  if(v===null||v===undefined)return'—';
+  const a=Math.abs(Math.round(v));
+  if(a===0)return'E';
+  return a>=1000?(a/1000).toFixed(1)+'k':String(a);
+}
+
+function getWeekDates(){
+  const today=new Date();
+  const dow=today.getDay();
+  const monday=new Date(today);
+  monday.setDate(today.getDate()-(dow===0?6:dow-1));
+  return Array.from({length:7},(_,i)=>{
+    const d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    return d;
+  });
+}
+
+function computeDeficitFromData(d){
+  const delSet=new Set(d.deleted||[]);
+  const delActSet=new Set(d.deletedActs||[]);
+  const q=d.qty||{};const a=d.acts||{};
+  const cx=d.custom||[];const cxa=d.customActs||[];const wt=d.weight||205;
+  const allFoods=[...FOODS.filter(f=>!delSet.has(f.id)),...cx];
+  let cal=0;allFoods.forEach(f=>{cal+=f.cal*(q[f.id]||0);});
+  const allActs=[...ACTS.map(act=>act.id==='tdee'?{...act,cal:calcTDEE(wt)}:act).filter(act=>!delActSet.has(act.id)),...cxa];
+  let burn=0;allActs.forEach(act=>{if(act.always||a[act.id])burn+=act.cal;});
+  return burn-cal;
+}
+
+function renderWeekChart(){
+  const el=document.getElementById('week-chart');
+  if(!el)return;
+  const dates=getWeekDates();
+  const todayKey=TODAY.replace(/ /g,'-');
+  const labels=['M','T','W','T','F','S','S'];
+  let html='<div class="week-chart-lbl">This Week</div><div class="week-cols">';
+  dates.forEach((d,i)=>{
+    const key=d.toDateString().replace(/ /g,'-');
+    const isToday=key===todayKey;
+    const val=weeklyData[key];
+    const hasVal=val!==undefined&&val!==null;
+    const pct=hasVal?Math.min(100,Math.max(0,(val/calorieTarget)*100)):0;
+    const barH=Math.round(pct*24/100);
+    const isSurplus=hasVal&&val<0;
+    html+=`<div class="week-col${isToday?' is-today':''}">
+      <div class="week-col-name">${labels[i]}</div>
+      <div class="week-bar-track"><div class="week-bar ${isSurplus?'surplus':'good'}"${isToday?' id="week-today-bar"':''} style="height:${barH}px"></div></div>
+      <div class="week-col-val"${isToday?' id="week-today-val"':''}>${hasVal?fmtDef(val):'—'}</div>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+async function fetchWeeklyData(){
+  if(!fbDb||!fbRefFn||!fbGetFn)return;
+  const dates=getWeekDates();
+  const todayKey=TODAY.replace(/ /g,'-');
+  await Promise.all(dates.map(async d=>{
+    const key=d.toDateString().replace(/ /g,'-');
+    if(key===todayKey)return;
+    try{
+      const snap=await fbGetFn(fbRefFn(fbDb,`tracker/${key}`));
+      const data=snap.val();
+      if(data)weeklyData[key]=data.deficit!==undefined?data.deficit:computeDeficitFromData(data);
+    }catch(e){}
+  }));
+  renderWeekChart();
+}
+
+/* ══════════════════════════════════════════
+   DAY ROLLOVER
+══════════════════════════════════════════ */
+async function seedFromYesterday(){
+  if(!fbDb||!fbRefFn||!fbGetFn)return;
+  const yest=new Date();
+  yest.setDate(yest.getDate()-1);
+  const yKey=yest.toDateString().replace(/ /g,'-');
+  try{
+    const snap=await fbGetFn(fbRefFn(fbDb,`tracker/${yKey}`));
+    const d=snap.val();
+    if(d){
+      custom=d.custom||[];
+      customActs=d.customActs||[];
+      (d.deleted||[]).forEach(id=>deletedIds.add(id));
+      (d.deletedActs||[]).forEach(id=>deletedActIds.add(id));
+      tasks=(d.tasks||[]).filter(t=>!t.done);
+      if(d.weight)weight=d.weight;
+      if(d.calorieTarget){
+        calorieTarget=d.calorieTarget;
+        const tinp=document.getElementById('target-inp');
+        if(tinp)tinp.value=calorieTarget;
+      }
+      saveData();
+    }
+  }catch(e){}
+  renderMeals();renderActs();renderTasks();
+}
 
 renderDate();renderQuote();renderMeals();renderActs();renderTasks();
 setInterval(renderDate,60000);
