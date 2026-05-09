@@ -432,10 +432,11 @@ let weight=205, calorieTarget=500;
 let currentDeficit=0, weeklyData={}, weightData={};
 let weekChartExpanded=false, weighInChecked=false;
 const TODAY=new Date().toDateString();
+const AGE=new Date().getFullYear()-1998;
 
 function calcTDEE(lbs){
   const kg=lbs*0.453592;
-  const bmr=10*kg+6.25*187.96-5*28+5; // Mifflin-St Jeor, male, 6'2", 28yo
+  const bmr=10*kg+6.25*187.96-5*AGE+5; // Mifflin-St Jeor, male, 6'2"
   return Math.round(bmr*1.47);
 }
 
@@ -566,7 +567,7 @@ function renderActs(){
     const isCx=customActs.some(c=>c.id===a.id);
     const delBtn=(!a.always)?`<button class="act-del" onclick="delAct('${a.id}',${isCx})" aria-label="Remove">×</button>`:'';
     const subHtml=a.id==='tdee'
-      ?`<div class="food-sub">6'2&quot; · <input type="number" id="weight-inp" value="${weight}" min="100" max="400" style="width:36px;border:none;border-bottom:1px solid var(--border2);background:transparent;font-family:var(--body);font-size:11px;color:var(--muted);text-align:center;outline:none;-moz-appearance:textfield;" onclick="event.stopPropagation()" onchange="updateWeight(+this.value)"> lbs · 28yo</div>`
+      ?`<div class="food-sub">6'2&quot; · <input type="number" id="weight-inp" value="${weight}" min="100" max="400" style="width:36px;border:none;border-bottom:1px solid var(--border2);background:transparent;font-family:var(--body);font-size:11px;color:var(--muted);text-align:center;outline:none;-moz-appearance:textfield;" onclick="event.stopPropagation()" onchange="updateWeight(+this.value)"> lbs · ${AGE}yo</div>`
       :a.sub?`<div class="food-sub">${a.sub}</div>`:'';
     return`<div class="act-row" onclick="${a.always?'':` tAct('${a.id}')`}">
       <input class="act-chk" type="checkbox" ${chk?'checked':''} ${a.always?'disabled':''} onchange="tAct('${a.id}')" onclick="event.stopPropagation()"/>
@@ -601,14 +602,16 @@ function update(){
   const allActs=[...ACTS.filter(a=>!deletedActIds.has(a.id)),...customActs];
   allActs.forEach(a=>{if(a.always||acts[a.id])burn+=a.cal;});
   const def=burn-cal;
-  const pct=Math.min(100,Math.max(0,(def/calorieTarget)*100));
+  const pct=Math.min(100,Math.max(0,(Math.abs(def)/calorieTarget)*100));
   document.getElementById('s-in').textContent=cal.toLocaleString();
   document.getElementById('s-burn').textContent=burn.toLocaleString();
   const el=document.getElementById('s-def');
   el.textContent=def.toLocaleString();
   el.className='sc-v'+(def<0?' over':'');
   document.getElementById('s-pro').textContent=Math.round(pro)+'g';
-  document.getElementById('prog-fill').style.width=pct+'%';
+  const pf=document.getElementById('prog-fill');
+  pf.style.width=pct+'%';
+  pf.style.background=def<0?'var(--red)':'';
   document.getElementById('prog-def').textContent=def.toLocaleString();
   currentDeficit=def;
   const todayValEl=document.getElementById('week-today-val');
@@ -703,7 +706,7 @@ function buildSystemPrompt(){
 
   return `You are an embedded assistant inside Nick's personal daily tracker app. You have full context of his day.
 
-NICK'S STATS: Male, 6'2", ~205 lbs, 28 years old, recovering from shoulder surgery (limited left arm use). Daily deficit target: ${calorieTarget} calories. Protein goal: 200g/day. Base TDEE ~2,900 cal.
+NICK'S STATS: Male, 6'2", ~205 lbs, ${AGE} years old, recovering from shoulder surgery (limited left arm use). Daily deficit target: ${calorieTarget} calories. Protein goal: 200g/day. Base TDEE ~2,900 cal.
 
 TODAY'S LOG (${TODAY}):
 - Eaten: ${eaten}
