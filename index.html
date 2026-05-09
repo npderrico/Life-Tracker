@@ -82,6 +82,18 @@
   .week-col-wt{font-size:7px;color:var(--muted2);font-family:var(--body);opacity:0.7;}
   .week-col.is-today .week-col-wt{color:var(--gold-light);opacity:1;}
 
+  /* STREAK */
+  .hdr-streak{font-family:var(--body);font-size:9px;color:var(--gold-light);text-align:center;margin-top:2px;font-style:italic;letter-spacing:0.05em;}
+
+  /* FOOD SEARCH */
+  .food-search-row{display:flex;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .food-search-inp{flex:1;border:1px solid var(--border2);background:#faf7f0;font-family:var(--body);font-size:13px;padding:6px 8px;color:var(--text);outline:none;min-width:0;}
+  .food-search-inp::placeholder{color:var(--muted2);font-style:italic;}
+  .food-search-inp:focus{border-color:var(--green2);}
+  .food-search-btn{background:var(--green);border:none;color:var(--cream2);font-family:var(--body);font-size:12px;padding:6px 10px;cursor:pointer;white-space:nowrap;letter-spacing:0.05em;touch-action:manipulation;}
+  .food-search-btn:active{background:var(--green2);}
+  .food-search-btn:disabled{opacity:0.6;cursor:default;}
+
   /* WEIGH-IN OVERLAY */
   .weigh-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:50;display:flex;align-items:center;justify-content:center;}
   .weigh-modal{background:var(--cream);border:2px solid var(--gold);padding:24px 20px;max-width:260px;width:88%;}
@@ -236,6 +248,7 @@
     </div>
   </div>
   <div class="hdr-date" id="date-label"></div>
+  <div class="hdr-streak" id="hdr-streak"></div>
 </header>
 
 <div id="view-today">
@@ -259,6 +272,10 @@
   <div class="sec-hdr" onclick="toggleSec('meals')"><span class="sec-title">Meals &amp; Food</span><span class="chev">▾</span></div>
   <div class="sec-body" id="body-meals"></div>
   <div class="custom-wrap">
+    <div class="food-search-row">
+      <input class="food-search-inp" type="text" id="food-search-inp" placeholder="Search food (e.g. Chipotle bowl)…" onkeydown="if(event.key==='Enter')searchFood()"/>
+      <button class="food-search-btn" id="food-search-btn" onclick="searchFood()">Search</button>
+    </div>
     <div class="custom-fields">
       <input class="inp-name" type="text" id="c-name" placeholder="Custom item..."/>
       <input class="inp-sm" type="number" id="c-cal" placeholder="cal" inputmode="numeric"/>
@@ -484,6 +501,7 @@ async function initFirebase(){
       syncBar.className='sync-bar ok';
     });
     fetchWeeklyData();
+    fetchStreak();
   }catch(e){
     syncBar.textContent='Offline — changes saved locally only';
     syncBar.className='sync-bar err';
@@ -1093,6 +1111,87 @@ async function seedFromYesterday(){
   }catch(e){}
   renderMeals();renderActs();renderTasks();
 }
+
+/* ══════════════════════════════════════════
+   LOGGING STREAK
+══════════════════════════════════════════ */
+function renderStreak(n){
+  const el=document.getElementById('hdr-streak');
+  if(!el)return;
+  if(n<1){el.textContent='';return;}
+  el.textContent=`🔥 ${n}-day streak`;
+}
+
+async function fetchStreak(){
+  if(!fbDb||!fbRefFn||!fbGetFn){renderStreak(0);return;}
+  // Check if today has any logged data from live state
+  const todayHasLog=Object.values(qty).some(v=>v>0)||Object.values(acts).some(v=>v>0);
+  // Fetch last 30 past days in parallel
+  const pastDays=[];
+  for(let i=1;i<=30;i++){
+    const d=new Date();d.setDate(d.getDate()-i);
+    pastDays.push(d.toDateString().replace(/ /g,'-'));
+  }
+  let snaps;
+  try{
+    snaps=await Promise.all(pastDays.map(key=>
+      fbGetFn(fbRefFn(fbDb,`tracker/${key}`)).catch(()=>null)
+    ));
+  }catch(e){renderStreak(todayHasLog?1:0);return;}
+  const pastLogged=snaps.map(snap=>{
+    const d=snap?.val();
+    return !!(d&&(Object.values(d.qty||{}).some(v=>v>0)||Object.values(d.acts||{}).some(v=>v>0)));
+  });
+  let streak=todayHasLog?1:0;
+  for(const logged of pastLogged){
+    if(logged)streak++;
+    else break;
+  }
+  renderStreak(streak);
+}
+
+/* ══════════════════════════════════════════
+   FOOD SEARCH (Claude-powered)
+══════════════════════════════════════════ */
+window.searchFood=async()=>{
+  const inp=document.getElementById('food-search-inp');
+  const query=inp.value.trim();
+  if(!query)return;
+  const btn=document.getElementById('food-search-btn');
+  btn.textContent='…';btn.disabled=true;
+  try{
+    const sys='You are a precise nutrition lookup assistant. When given a food name or description, respond with ONLY a JSON object — no markdown fences, no explanation — in this exact format: {"name":"Food Name","calories":000,"protein":00}. Use realistic values for a typical single serving of that food.';
+    let msgs=[{role:'user',content:`Nutrition info for: ${query}`}];
+    let resultText=null;
+    for(let i=0;i<4&&!resultText;i++){
+      const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:msgs})});
+      const data=await res.json();
+      if(data.error)break;
+      if(data.stop_reason==='tool_use'){
+        msgs.push({role:'assistant',content:data.content});
+        const tr=[];
+        for(const b of data.content){
+          if(b.type==='tool_use')tr.push({type:'tool_result',tool_use_id:b.id,content:'Use your training data for this lookup.'});
+        }
+        if(!tr.length)break;
+        msgs.push({role:'user',content:tr});
+      }else{
+        resultText=(data.content||[]).find(b=>b.type==='text')?.text||'';
+      }
+    }
+    if(resultText){
+      const match=resultText.match(/\{[\s\S]*?\}/);
+      if(match){
+        const info=JSON.parse(match[0]);
+        document.getElementById('c-name').value=info.name||query;
+        document.getElementById('c-cal').value=info.calories||'';
+        document.getElementById('c-pro').value=info.protein||'';
+        inp.value='';
+      }
+    }
+  }catch(e){}
+  btn.textContent='Search';btn.disabled=false;
+};
 
 renderDate();renderQuote();renderMeals();renderActs();renderTasks();
 setInterval(renderDate,60000);
