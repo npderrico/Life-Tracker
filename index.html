@@ -66,19 +66,33 @@
   .golf-refresh:active{color:var(--gold-light);}
 
   /* WEEK CHART */
-  .week-chart{margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px;}
+  .week-chart{margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px;cursor:pointer;user-select:none;}
   .week-chart-lbl{font-size:7px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);margin-bottom:4px;font-style:italic;}
   .week-cols{display:flex;gap:1px;}
   .week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;}
   .week-col-name{font-size:7px;color:var(--muted2);font-family:var(--body);line-height:1;}
   .week-col.is-today .week-col-name{color:var(--gold-light);}
-  .week-bar-track{width:100%;height:24px;display:flex;align-items:flex-end;justify-content:center;}
+  .week-bar-track{width:100%;display:flex;align-items:flex-end;justify-content:center;transition:height 0.3s;}
   .week-bar{width:7px;border-radius:1px 1px 0 0;transition:height 0.4s;}
   .week-bar.good{background:var(--green3);}
   .week-bar.surplus{background:var(--red);}
   .week-col.is-today .week-bar{background:var(--gold);}
   .week-col-val{font-size:7px;color:var(--muted2);font-family:var(--body);}
   .week-col.is-today .week-col-val{color:var(--gold-light);}
+  .week-col-wt{font-size:7px;color:var(--muted2);font-family:var(--body);opacity:0.7;}
+  .week-col.is-today .week-col-wt{color:var(--gold-light);opacity:1;}
+
+  /* WEIGH-IN OVERLAY */
+  .weigh-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:50;display:flex;align-items:center;justify-content:center;}
+  .weigh-modal{background:var(--cream);border:2px solid var(--gold);padding:24px 20px;max-width:260px;width:88%;}
+  .weigh-title{font-family:var(--serif);font-size:17px;color:var(--green);margin-bottom:3px;}
+  .weigh-sub{font-size:12px;font-family:var(--body);color:var(--muted);font-style:italic;margin-bottom:16px;}
+  .weigh-input{width:100%;border:1px solid var(--border2);background:#faf7f0;font-family:var(--serif);font-size:28px;text-align:center;padding:10px 8px;color:var(--text);outline:none;-moz-appearance:textfield;}
+  .weigh-input:focus{border-color:var(--green2);}
+  .weigh-btns{display:flex;gap:8px;margin-top:12px;}
+  .weigh-submit{flex:1;padding:10px;background:var(--green);border:none;color:var(--cream2);font-family:var(--body);font-size:12px;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
+  .weigh-submit:active{background:var(--green2);}
+  .weigh-skip{flex:1;padding:10px;background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--body);font-size:12px;cursor:pointer;font-style:italic;touch-action:manipulation;}
 
   /* SCORECARD */
   .card{margin:0 14px 0;border:1px solid var(--border2);background:#faf7f0;position:sticky;top:0;z-index:9;}
@@ -186,7 +200,7 @@
         <input class="task-input" type="text" id="task-inp" placeholder="Add task..." onkeydown="taskKey(event)"/>
         <button class="task-go" onclick="addTask()" aria-label="Add">+</button>
       </div>
-      <div class="week-chart" id="week-chart"></div>
+      <div class="week-chart" id="week-chart" onclick="toggleWeekChart()"></div>
     </div>
     <div class="hdr-center">
       <div class="hdr-eyebrow">Daily Log</div>
@@ -247,6 +261,19 @@
 </div>
 
 <div class="reset-wrap"><button class="reset-btn" onclick="resetAll()">Reset today's card</button></div>
+
+<!-- WEIGH-IN OVERLAY -->
+<div class="weigh-overlay" id="weigh-overlay" style="display:none">
+  <div class="weigh-modal">
+    <div class="weigh-title">Good morning, Nick.</div>
+    <div class="weigh-sub">Log your weight to track progress.</div>
+    <input class="weigh-input" type="number" id="weigh-inp" inputmode="decimal" step="0.1" min="100" max="400" placeholder="lbs" onkeydown="if(event.key==='Enter')submitWeighIn()">
+    <div class="weigh-btns">
+      <button class="weigh-submit" onclick="submitWeighIn()">Log Weight</button>
+      <button class="weigh-skip" onclick="skipWeighIn()">Skip</button>
+    </div>
+  </div>
+</div>
 
 <!-- CLAUDE FAB -->
 <button class="claude-fab" onclick="toggleDrawer()" aria-label="Ask Claude">
@@ -354,7 +381,8 @@ const deletedActIds=new Set();
 let chatHistory=[];
 let fbDb=null, fbRef=null, fbRefFn=null, fbGetFn=null, drawerOpen=false, sending=false;
 let weight=205, calorieTarget=500;
-let currentDeficit=0, weeklyData={};
+let currentDeficit=0, weeklyData={}, weightData={};
+let weekChartExpanded=false, weighInChecked=false;
 const TODAY=new Date().toDateString();
 
 function calcTDEE(lbs){
@@ -398,6 +426,7 @@ async function initFirebase(){
       } else {
         seedFromYesterday();
       }
+      if(!weighInChecked){weighInChecked=true;checkWeighIn();}
       syncBar.textContent='✦ synced across devices';
       syncBar.className='sync-bar ok';
     });
@@ -527,11 +556,12 @@ function update(){
   document.getElementById('prog-fill').style.width=pct+'%';
   document.getElementById('prog-def').textContent=def.toLocaleString();
   currentDeficit=def;
-  weeklyData[TODAY.replace(/ /g,'-')]=def;
   const todayValEl=document.getElementById('week-today-val');
-  if(todayValEl)todayValEl.textContent=fmtDef(def);
+  if(todayValEl)todayValEl.textContent=fmtDef(def,weekChartExpanded);
   const todayBarEl=document.getElementById('week-today-bar');
-  if(todayBarEl){const pct2=Math.min(100,Math.max(0,(def/calorieTarget)*100));todayBarEl.style.height=Math.round(pct2*24/100)+'px';}
+  if(todayBarEl){const maxH=weekChartExpanded?48:24;const pct2=Math.min(100,Math.max(0,(def/calorieTarget)*100));todayBarEl.style.height=Math.round(pct2*maxH/100)+'px';}
+  const todayWtEl=document.getElementById('week-today-wt');
+  if(todayWtEl)todayWtEl.textContent=weight?weight+'lb':'—';
 }
 
 /* ══════════════════════════════════════════
@@ -629,7 +659,7 @@ TODAY'S LOG (${TODAY}):
 STANDARD FOODS Nick eats:
 ${all.map(f=>`- ${f.name}: ${f.cal} cal, ${f.protein}g protein`).join('\n')}
 
-You can look up nutrition info for any food using web search. Be direct and concise — Nick doesn't need lengthy explanations, just accurate answers. When he asks to add a food or change something, confirm what you did clearly. If a food isn't in his list, look it up and give him the calories and protein.`;
+You have two tools: web_search for nutrition lookups, and get_past_log to fetch Nick's log from any past date. Use get_past_log whenever he asks about what he ate, his deficit, weight, or tasks on a previous day (e.g. "what did I eat Monday?" or "how was my deficit last Tuesday?"). Be direct and concise — no lengthy explanations. Confirm food additions clearly. Look up unlisted foods via web search.`;
 }
 
 window.askClaude=async()=>{
@@ -646,38 +676,48 @@ window.askClaude=async()=>{
   appendMsg('user',msg);
   const thinkId='think-'+Date.now();
   appendMsg('thinking','Claude is thinking…',thinkId);
-
   chatHistory.push({role:'user',content:msg});
 
   try{
-    const res=await fetch('/.netlify/functions/claude',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        system:buildSystemPrompt(),
-        messages:chatHistory
-      })
-    });
+    let iters=0;
+    while(iters++<5){
+      const res=await fetch('/.netlify/functions/claude',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({system:buildSystemPrompt(),messages:chatHistory})
+      });
+      const data=await res.json();
 
-    const data=await res.json();
-    const thinkEl=document.getElementById(thinkId);
-    if(thinkEl)thinkEl.remove();
-
-    if(data.error){
-      appendMsg('assistant','Error: '+data.error.message);
-      document.getElementById('drawer-status').textContent='Error — try again';
-    } else {
-      const textBlocks=data.content.filter(b=>b.type==='text');
-      const reply=textBlocks.map(b=>b.text).join('\n').trim();
-      if(reply){
-        appendMsg('assistant',reply);
-        chatHistory.push({role:'assistant',content:data.content});
+      if(data.error){
+        const thinkEl=document.getElementById(thinkId);if(thinkEl)thinkEl.remove();
+        appendMsg('assistant','Error: '+data.error.message);
+        document.getElementById('drawer-status').textContent='Error — try again';
+        break;
       }
-      document.getElementById('drawer-status').textContent='Ready — log updated as context';
+
+      if(data.stop_reason==='tool_use'){
+        chatHistory.push({role:'assistant',content:data.content});
+        const toolResults=[];
+        for(const block of data.content){
+          if(block.type==='tool_use'&&block.name==='get_past_log'){
+            document.getElementById('drawer-status').textContent='Fetching past log…';
+            const logText=await fetchPastLogForClaude(block.input.date);
+            toolResults.push({type:'tool_result',tool_use_id:block.id,content:logText});
+          }
+        }
+        if(!toolResults.length)break; // unexpected tool — stop to avoid loop
+        chatHistory.push({role:'user',content:toolResults});
+        document.getElementById('drawer-status').textContent='Thinking…';
+      }else{
+        const thinkEl=document.getElementById(thinkId);if(thinkEl)thinkEl.remove();
+        const reply=data.content.filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+        if(reply){appendMsg('assistant',reply);chatHistory.push({role:'assistant',content:data.content});}
+        document.getElementById('drawer-status').textContent='Ready — log updated as context';
+        break;
+      }
     }
   }catch(e){
-    const thinkEl=document.getElementById(thinkId);
-    if(thinkEl)thinkEl.remove();
+    const thinkEl=document.getElementById(thinkId);if(thinkEl)thinkEl.remove();
     appendMsg('assistant','Network error — check your connection and try again.');
     document.getElementById('drawer-status').textContent='Connection error';
   }
@@ -756,11 +796,12 @@ function renderGolf(d){
 /* ══════════════════════════════════════════
    WEEK CHART
 ══════════════════════════════════════════ */
-function fmtDef(v){
+function fmtDef(v,full=false){
   if(v===null||v===undefined)return'—';
   const a=Math.abs(Math.round(v));
   if(a===0)return'E';
-  return a>=1000?(a/1000).toFixed(1)+'k':String(a);
+  const abs=a>=1000?(a/1000).toFixed(1)+'k':String(a);
+  return full?(v>0?'+':'-')+abs:abs;
 }
 
 function getWeekDates(){
@@ -793,19 +834,24 @@ function renderWeekChart(){
   const dates=getWeekDates();
   const todayKey=TODAY.replace(/ /g,'-');
   const labels=['M','T','W','T','F','S','S'];
-  let html='<div class="week-chart-lbl">This Week</div><div class="week-cols">';
+  const maxH=weekChartExpanded?48:24;
+  const arrow=weekChartExpanded?'▴':'▾';
+  let html=`<div class="week-chart-lbl">This Week <span style="color:var(--gold-light);font-style:normal">${arrow}</span></div><div class="week-cols">`;
   dates.forEach((d,i)=>{
     const key=d.toDateString().replace(/ /g,'-');
     const isToday=key===todayKey;
-    const val=weeklyData[key];
+    const val=isToday?currentDeficit:weeklyData[key];
+    const wt=isToday?weight:weightData[key];
     const hasVal=val!==undefined&&val!==null;
+    const hasWt=wt!==undefined&&wt!==null;
     const pct=hasVal?Math.min(100,Math.max(0,(val/calorieTarget)*100)):0;
-    const barH=Math.round(pct*24/100);
+    const barH=Math.round(pct*maxH/100);
     const isSurplus=hasVal&&val<0;
     html+=`<div class="week-col${isToday?' is-today':''}">
       <div class="week-col-name">${labels[i]}</div>
-      <div class="week-bar-track"><div class="week-bar ${isSurplus?'surplus':'good'}"${isToday?' id="week-today-bar"':''} style="height:${barH}px"></div></div>
-      <div class="week-col-val"${isToday?' id="week-today-val"':''}>${hasVal?fmtDef(val):'—'}</div>
+      <div class="week-bar-track" style="height:${maxH}px"><div class="week-bar ${isSurplus?'surplus':'good'}"${isToday?` id="week-today-bar"`:''}  style="height:${barH}px"></div></div>
+      <div class="week-col-val"${isToday?` id="week-today-val"`:''}>${hasVal?fmtDef(val,weekChartExpanded):'—'}</div>
+      <div class="week-col-wt"${isToday?` id="week-today-wt"`:''}>${hasWt?wt+'lb':'—'}</div>
     </div>`;
   });
   html+='</div>';
@@ -822,11 +868,80 @@ async function fetchWeeklyData(){
     try{
       const snap=await fbGetFn(fbRefFn(fbDb,`tracker/${key}`));
       const data=snap.val();
-      if(data)weeklyData[key]=data.deficit!==undefined?data.deficit:computeDeficitFromData(data);
+      if(data){
+        if(data.deficit!==undefined)weeklyData[key]=data.deficit;
+        if(data.weight)weightData[key]=data.weight;
+      }
     }catch(e){}
   }));
   renderWeekChart();
 }
+
+/* ══════════════════════════════════════════
+   WEIGH-IN
+══════════════════════════════════════════ */
+function checkWeighIn(){
+  if(localStorage.getItem('weighDone-'+TODAY))return;
+  document.getElementById('weigh-overlay').style.display='flex';
+  setTimeout(()=>{const i=document.getElementById('weigh-inp');if(i)i.focus();},200);
+}
+
+window.submitWeighIn=()=>{
+  const val=parseFloat(document.getElementById('weigh-inp').value);
+  if(!val||val<100||val>400)return;
+  weight=val;
+  localStorage.setItem('weighDone-'+TODAY,'1');
+  document.getElementById('weigh-overlay').style.display='none';
+  const winp=document.getElementById('weight-inp');if(winp)winp.value=weight;
+  weightData[TODAY.replace(/ /g,'-')]=weight;
+  saveData();renderActs();renderWeekChart();
+};
+
+window.skipWeighIn=()=>{
+  document.getElementById('weigh-overlay').style.display='none';
+};
+
+/* ══════════════════════════════════════════
+   PAST LOG FETCHING (for Claude)
+══════════════════════════════════════════ */
+function parseDateForLog(str){
+  const s=str.toLowerCase().trim();
+  const today=new Date();
+  if(s==='today')return today;
+  if(s==='yesterday'){const d=new Date(today);d.setDate(d.getDate()-1);return d;}
+  const days=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const idx=days.findIndex(day=>s.includes(day));
+  if(idx>=0){const d=new Date(today);const diff=(today.getDay()-idx+7)%7||7;d.setDate(today.getDate()-diff);return d;}
+  const parsed=new Date(str+'T12:00:00');
+  return isNaN(parsed.getTime())?null:parsed;
+}
+
+async function fetchPastLogForClaude(dateStr){
+  if(!fbDb||!fbRefFn||!fbGetFn)return'Firebase not connected.';
+  const date=parseDateForLog(dateStr);
+  if(!date)return`Could not parse date: "${dateStr}". Try "yesterday", "Monday", or "2025-05-05".`;
+  const key=date.toDateString().replace(/ /g,'-');
+  if(key===TODAY.replace(/ /g,'-'))return"Today's log is already in your context.";
+  try{
+    const snap=await fbGetFn(fbRefFn(fbDb,`tracker/${key}`));
+    const d=snap.val();
+    const label=date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    if(!d)return`No log found for ${label}.`;
+    const delSet=new Set(d.deleted||[]);
+    const q=d.qty||{};
+    const allFoods=[...FOODS.filter(f=>!delSet.has(f.id)),...(d.custom||[])];
+    const eaten=allFoods.filter(f=>(q[f.id]||0)>0)
+      .map(f=>`${q[f.id]}x ${f.name} (${f.cal*q[f.id]}cal, ${(f.protein||0)*q[f.id]}g protein)`)
+      .join('; ')||'nothing logged';
+    const def=d.deficit!==undefined?d.deficit+' cal deficit':'not recorded';
+    const wt=d.weight?d.weight+' lbs':'not logged';
+    const done=(d.tasks||[]).filter(t=>t.done).map(t=>t.text).join(', ')||'none';
+    const open=(d.tasks||[]).filter(t=>!t.done).map(t=>t.text).join(', ')||'none';
+    return`${label}\nEaten: ${eaten}\nDeficit: ${def} | Weight: ${wt}\nTasks done: ${done} | Tasks incomplete: ${open}`;
+  }catch(e){return`Error fetching log: ${e.message}`;}
+}
+
+window.toggleWeekChart=()=>{weekChartExpanded=!weekChartExpanded;renderWeekChart();};
 
 /* ══════════════════════════════════════════
    DAY ROLLOVER

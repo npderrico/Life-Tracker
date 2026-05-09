@@ -17,7 +17,23 @@ exports.handler = async (event) => {
         model: 'claude-sonnet-4-5',
         max_tokens: 1000,
         system: body.system,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        tools: [
+          { type: 'web_search_20250305', name: 'web_search' },
+          {
+            name: 'get_past_log',
+            description: "Fetch Nick's calorie/activity log for a specific past date. Use whenever he asks about what he ate, his deficit, weight, or tasks on a previous day.",
+            input_schema: {
+              type: 'object',
+              properties: {
+                date: {
+                  type: 'string',
+                  description: 'The date to fetch. Accepts natural language like "yesterday", "Monday", "last Friday", or ISO format like "2025-05-05".'
+                }
+              },
+              required: ['date']
+            }
+          }
+        ],
         messages: body.messages
       })
     });
