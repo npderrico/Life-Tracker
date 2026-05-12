@@ -81,6 +81,8 @@
   .week-col.is-today .week-col-val{color:var(--gold-light);}
   .week-col-wt{font-size:7px;color:var(--muted2);font-family:var(--body);opacity:0.7;}
   .week-col.is-today .week-col-wt{color:var(--gold-light);opacity:1;}
+  .week-col-burn{font-size:7px;color:var(--green3);font-family:var(--body);opacity:0.8;}
+  .week-col.is-today .week-col-burn{color:#7ec8a0;opacity:1;}
 
   /* STREAK */
   .hdr-streak{font-family:var(--body);font-size:9px;color:var(--gold-light);text-align:center;margin-top:2px;font-style:italic;letter-spacing:0.05em;}
@@ -466,6 +468,7 @@ const QUOTES=[
    STATE
 ══════════════════════════════════════════ */
 let custom=[],qty={},acts={},col={},tasks=[],customActs=[],foodOrder=[],actOrder=[];
+let burnData={},currentExtraBurn=0;
 const deletedIds=new Set();
 const deletedActIds=new Set();
 let chatHistory=[];
@@ -537,7 +540,7 @@ async function initFirebase(){
 }
 
 function saveData(){
-  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,deficit:currentDeficit,foodOrder,actOrder,date:TODAY};
+  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,deficit:currentDeficit,extraBurn:currentExtraBurn,foodOrder,actOrder,date:TODAY};
   if(fbRef){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
       set(fbRef,data).catch(()=>{});
@@ -667,6 +670,9 @@ function update(){
   const extraEl=document.getElementById('s-extra');
   if(extraEl)extraEl.textContent=extraBurn>0?'+'+extraBurn.toLocaleString()+' burned':'';
   currentDeficit=def;
+  currentExtraBurn=extraBurn;
+  const todayBurnEl=document.getElementById('week-today-burn');
+  if(todayBurnEl)todayBurnEl.textContent=extraBurn>0?'+'+fmtBurn(extraBurn):'—';
   const todayValEl=document.getElementById('week-today-val');
   if(todayValEl)todayValEl.textContent=fmtDef(def,weekChartExpanded);
   const todayBarEl=document.getElementById('week-today-bar');
@@ -995,6 +1001,8 @@ function renderGolf(d){
 /* ══════════════════════════════════════════
    WEEK CHART
 ══════════════════════════════════════════ */
+function fmtBurn(v){const a=Math.round(v);return a>=1000?(a/1000).toFixed(1)+'k':String(a);}
+
 function fmtDef(v,full=false){
   if(v===null||v===undefined)return'—';
   const a=Math.abs(Math.round(v));
@@ -1030,8 +1038,10 @@ function renderWeekChart(){
     const isToday=key===todayKey;
     const val=isToday?currentDeficit:weeklyData[key];
     const wt=isToday?(localStorage.getItem('weighDone-'+TODAY)?weight:undefined):weightData[key];
+    const burn=isToday?currentExtraBurn:burnData[key];
     const hasVal=val!==undefined&&val!==null;
     const hasWt=wt!==undefined&&wt!==null;
+    const hasBurn=burn!==undefined&&burn!==null;
     const pct=hasVal?Math.min(100,Math.max(0,(val/calorieTarget)*100)):0;
     const barH=Math.round(pct*maxH/100);
     const isSurplus=hasVal&&val<0;
@@ -1040,6 +1050,7 @@ function renderWeekChart(){
       <div class="week-bar-track" style="height:${maxH}px"><div class="week-bar ${isSurplus?'surplus':'good'}"${isToday?` id="week-today-bar"`:''}  style="height:${barH}px"></div></div>
       <div class="week-col-val"${isToday?` id="week-today-val"`:''}>${hasVal?fmtDef(val,weekChartExpanded):'—'}</div>
       <div class="week-col-wt"${isToday?` id="week-today-wt"`:''}>${hasWt?wt+'lb':'—'}</div>
+      <div class="week-col-burn"${isToday?` id="week-today-burn"`:''}>${hasBurn&&burn>0?'+'+fmtBurn(burn):'—'}</div>
     </div>`;
   });
   html+='</div>';
@@ -1059,6 +1070,7 @@ async function fetchWeeklyData(){
       if(data){
         if(data.deficit!==undefined)weeklyData[key]=data.deficit;
         if(data.weight)weightData[key]=data.weight;
+        if(data.extraBurn!==undefined)burnData[key]=data.extraBurn;
       }
     }catch(e){}
   }));
