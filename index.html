@@ -218,6 +218,14 @@
   .task-del-btn:active{color:var(--red);}
   .clear-done-btn{background:none;border:none;font-family:var(--body);font-size:9px;color:var(--muted2);cursor:pointer;font-style:italic;text-decoration:underline;text-underline-offset:2px;padding:0;margin-top:4px;display:block;}
 
+  /* DRAG & DROP */
+  .drag-handle{color:var(--border2);font-size:14px;cursor:grab;padding:0 8px 0 2px;flex-shrink:0;touch-action:none;user-select:none;line-height:1;transition:color 0.15s;}
+  .drag-handle:active{cursor:grabbing;color:var(--muted);}
+  .food-row.dragging,.act-row.dragging{opacity:0.25;}
+  .drag-ghost{border:1px solid var(--gold) !important;box-shadow:0 6px 20px rgba(0,0,0,0.18) !important;}
+  .food-row.drag-indicator-above,.act-row.drag-indicator-above{box-shadow:inset 0 3px 0 var(--gold);}
+  .food-row.drag-indicator-below,.act-row.drag-indicator-below{box-shadow:inset 0 -3px 0 var(--gold);}
+
   /* MESSAGE FORMATTING */
   .msg ul,.msg ol{margin:4px 0 4px 16px;padding:0;}
   .msg li{margin-bottom:3px;font-size:14px;line-height:1.45;}
@@ -459,7 +467,7 @@ const QUOTES=[
 /* ══════════════════════════════════════════
    STATE
 ══════════════════════════════════════════ */
-let custom=[],qty={},acts={},col={},tasks=[],customActs=[];
+let custom=[],qty={},acts={},col={},tasks=[],customActs=[],foodOrder=[],actOrder=[];
 const deletedIds=new Set();
 const deletedActIds=new Set();
 let chatHistory=[];
@@ -512,6 +520,8 @@ async function initFirebase(){
         const delActs=d.deletedActs||[];
         deletedActIds.clear();
         delActs.forEach(id=>deletedActIds.add(id));
+        if(d.foodOrder)foodOrder=d.foodOrder;
+        if(d.actOrder)actOrder=d.actOrder;
         renderMeals();renderActs();renderTasks();
       } else {
         seedFromYesterday();
@@ -530,7 +540,7 @@ async function initFirebase(){
 }
 
 function saveData(){
-  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,deficit:currentDeficit,date:TODAY};
+  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,deficit:currentDeficit,foodOrder,actOrder,date:TODAY};
   if(fbRef){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
       set(fbRef,data).catch(()=>{});
@@ -548,6 +558,8 @@ function loadLocal(){
       if(s.calorieTarget)calorieTarget=s.calorieTarget;
       (s.deleted||[]).forEach(id=>deletedIds.add(id));
       (s.deletedActs||[]).forEach(id=>deletedActIds.add(id));
+      if(s.foodOrder)foodOrder=s.foodOrder;
+      if(s.actOrder)actOrder=s.actOrder;
     }
   }catch(e){}
 }
@@ -578,11 +590,12 @@ function renderTasks(){
 
 function renderMeals(){
   const base=FOODS.filter(f=>!deletedIds.has(f.id));
-  const all=[...base,...custom];
+  const all=getSorted([...base,...custom],foodOrder);
   document.getElementById('body-meals').innerHTML=all.map(f=>{
     const q=qty[f.id]||0;
     const isCx=custom.some(c=>c.id===f.id);
-    return`<div class="food-row">
+    return`<div class="food-row" data-drag-id="${f.id}">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
       <div class="qty-wrap">
         <button class="qty-btn" ontouchstart="" onclick="chQty('${f.id}',-1)">−</button>
         <span class="qty-n ${q>0?'on':''}">${q}</span>
@@ -593,13 +606,14 @@ function renderMeals(){
       <button class="del-btn" onclick="delItem('${f.id}',${isCx})" aria-label="Remove">×</button>
     </div>`;
   }).join('');
+  initDrag('meals');
   update();
 }
 
 function renderActs(){
   const tdeeEntry=ACTS.find(a=>a.id==='tdee');
   if(tdeeEntry)tdeeEntry.cal=calcTDEE(weight);
-  const allActs=[...ACTS.filter(a=>!deletedActIds.has(a.id)),...customActs];
+  const allActs=getSorted([...ACTS.filter(a=>!deletedActIds.has(a.id)),...customActs],actOrder);
   document.getElementById('body-act').innerHTML=allActs.map(a=>{
     const chk=a.always||acts[a.id];
     const isCx=customActs.some(c=>c.id===a.id);
@@ -607,13 +621,15 @@ function renderActs(){
     const subHtml=a.id==='tdee'
       ?`<div class="food-sub">6'2&quot; · <input type="number" id="weight-inp" value="${weight}" min="100" max="400" style="width:36px;border:none;border-bottom:1px solid var(--border2);background:transparent;font-family:var(--body);font-size:11px;color:var(--muted);text-align:center;outline:none;-moz-appearance:textfield;" onclick="event.stopPropagation()" onchange="updateWeight(+this.value)"> lbs · ${AGE}yo</div>`
       :a.sub?`<div class="food-sub">${a.sub}</div>`:'';
-    return`<div class="act-row" onclick="${a.always?'':` tAct('${a.id}')`}">
+    return`<div class="act-row" data-drag-id="${a.id}" onclick="${a.always?'':` tAct('${a.id}')`}">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
       <input class="act-chk" type="checkbox" ${chk?'checked':''} ${a.always?'disabled':''} onchange="tAct('${a.id}')" onclick="event.stopPropagation()"/>
       <div class="act-info"><div class="act-name ${a.always?'dim':''}">${a.name}</div>${subHtml}</div>
       <div class="act-cal">${a.always?'':'+'}${a.cal.toLocaleString()}</div>
       ${delBtn}
     </div>`;
   }).join('');
+  initDrag('act');
   update();
 }
 
@@ -1204,6 +1220,8 @@ async function seedFromYesterday(){
       customActs=d.customActs||[];
       (d.deleted||[]).forEach(id=>deletedIds.add(id));
       (d.deletedActs||[]).forEach(id=>deletedActIds.add(id));
+      if(d.foodOrder)foodOrder=d.foodOrder;
+      if(d.actOrder)actOrder=d.actOrder;
       tasks=(d.tasks||[]).filter(t=>!t.done);
       if(d.weight)weight=d.weight;
       if(d.calorieTarget){
@@ -1297,6 +1315,86 @@ window.searchFood=async()=>{
   }catch(e){}
   btn.textContent='Search';btn.disabled=false;
 };
+
+/* ══════════════════════════════════════════
+   DRAG & DROP REORDER
+══════════════════════════════════════════ */
+function getSorted(arr,order){
+  if(!order||!order.length)return arr;
+  const map=new Map(order.map((id,i)=>[id,i]));
+  return[...arr].sort((a,b)=>(map.has(a.id)?map.get(a.id):9999)-(map.has(b.id)?map.get(b.id):9999));
+}
+
+function reorderList(listType,fromIdx,toIdx){
+  if(fromIdx===toIdx)return;
+  if(listType==='meals'){
+    const base=FOODS.filter(f=>!deletedIds.has(f.id));
+    const arr=getSorted([...base,...custom],foodOrder);
+    const[m]=arr.splice(fromIdx,1);arr.splice(toIdx,0,m);
+    foodOrder=arr.map(f=>f.id);
+    saveData();renderMeals();
+  }else{
+    const base=ACTS.filter(a=>!deletedActIds.has(a.id));
+    const arr=getSorted([...base,...customActs],actOrder);
+    const[m]=arr.splice(fromIdx,1);arr.splice(toIdx,0,m);
+    actOrder=arr.map(a=>a.id);
+    saveData();renderActs();
+  }
+}
+
+const Dragger={
+  s:null,
+  start(e,listType,rowEl){
+    if(Dragger.s)return;
+    e.preventDefault();
+    const container=rowEl.parentElement;
+    const rows=Array.from(container.querySelectorAll('[data-drag-id]'));
+    const idx=rows.indexOf(rowEl);
+    if(idx<0)return;
+    const rect=rowEl.getBoundingClientRect();
+    // Ghost: clone the row, position fixed over it
+    const ghost=document.createElement('div');
+    ghost.className=rowEl.className+' drag-ghost';
+    ghost.innerHTML=rowEl.innerHTML;
+    ghost.style.cssText=`position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;z-index:200;pointer-events:none;margin:0;`;
+    document.body.appendChild(ghost);
+    rowEl.classList.add('dragging');
+    Dragger.s={listType,idx,toIdx:idx,rowEl,rows,ghost,ghostTop:rect.top,rowH:rect.height,startY:e.clientY};
+    document.addEventListener('pointermove',Dragger._move,{passive:false});
+    document.addEventListener('pointerup',Dragger._end,{once:true});
+  },
+  move(e){
+    const s=Dragger.s;if(!s)return;
+    e.preventDefault();
+    const dy=e.clientY-s.startY;
+    s.ghost.style.top=(s.ghostTop+dy)+'px';
+    const toIdx=Math.max(0,Math.min(s.rows.length-1,s.idx+Math.round(dy/s.rowH)));
+    s.toIdx=toIdx;
+    s.rows.forEach((r,i)=>{
+      r.classList.remove('drag-indicator-above','drag-indicator-below');
+      if(i===toIdx&&i!==s.idx)r.classList.add(toIdx<s.idx?'drag-indicator-above':'drag-indicator-below');
+    });
+  },
+  end(){
+    const s=Dragger.s;if(!s)return;
+    document.removeEventListener('pointermove',Dragger._move);
+    s.ghost.remove();
+    s.rows.forEach(r=>r.classList.remove('dragging','drag-indicator-above','drag-indicator-below'));
+    const{listType,idx,toIdx}=s;
+    Dragger.s=null;
+    reorderList(listType,idx,toIdx);
+  }
+};
+Dragger._move=e=>Dragger.move(e);
+Dragger._end=()=>Dragger.end();
+
+function initDrag(listType){
+  const el=document.getElementById(listType==='meals'?'body-meals':'body-act');
+  if(!el)return;
+  el.querySelectorAll('.drag-handle').forEach(h=>{
+    h.addEventListener('pointerdown',e=>Dragger.start(e,listType,h.closest('[data-drag-id]')));
+  });
+}
 
 renderDate();renderQuote();renderMeals();renderActs();renderTasks();
 loadChatHistory();
