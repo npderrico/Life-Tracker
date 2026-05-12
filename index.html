@@ -113,6 +113,7 @@
   .sc:last-child{border-right:none;}
   .sc-v{font-family:var(--serif);font-size:17px;font-weight:500;color:#f5f0e8;line-height:1;margin-bottom:2px;}
   .sc-v.over{color:#f0a080;}
+  .sc-extra{font-size:8px;color:var(--gold-light);font-family:var(--body);font-style:italic;margin-top:1px;letter-spacing:0.03em;min-height:10px;}
   .sc-l{font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);}
   .progress-row{background:var(--cream2);padding:7px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
   .prog-lbl{font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);font-family:var(--body);white-space:nowrap;}
@@ -263,8 +264,6 @@
       <div class="hdr-name">Nick's Tracker</div>
     </div>
     <div class="quote-panel">
-      <div class="quote-text" id="quote-text"></div>
-      <div class="quote-attr" id="quote-attr"></div>
       <div class="golf-panel">
         <div class="golf-lbl">⛳ PGA Tour</div>
         <div id="golf-widget"><div class="golf-status">loading…</div></div>
@@ -273,7 +272,6 @@
     </div>
   </div>
   <div class="hdr-date" id="date-label"></div>
-  <div class="hdr-streak" id="hdr-streak"></div>
 </header>
 
 <div id="view-today">
@@ -283,7 +281,7 @@
   <div class="card-header">
     <div class="sc"><div class="sc-v" id="s-in">0</div><div class="sc-l">Eaten</div></div>
     <div class="sc"><div class="sc-v" id="s-burn">0</div><div class="sc-l">Burned</div></div>
-    <div class="sc"><div class="sc-v" id="s-def">0</div><div class="sc-l">Deficit</div></div>
+    <div class="sc"><div class="sc-v" id="s-def">0</div><div class="sc-l">Deficit</div><div class="sc-extra" id="s-extra"></div></div>
     <div class="sc"><div class="sc-v" id="s-pro">0g</div><div class="sc-l">Protein</div></div>
   </div>
   <div class="progress-row">
@@ -531,7 +529,6 @@ async function initFirebase(){
       syncBar.className='sync-bar ok';
     });
     fetchWeeklyData();
-    fetchStreak();
   }catch(e){
     syncBar.textContent='Offline — changes saved locally only';
     syncBar.className='sync-bar err';
@@ -652,9 +649,9 @@ function update(){
   const all=[...base,...custom];
   let cal=0,pro=0;
   all.forEach(f=>{const q=qty[f.id]||0;cal+=f.cal*q;pro+=(f.protein||0)*q;});
-  let burn=0;
+  let burn=0,extraBurn=0;
   const allActs=[...ACTS.filter(a=>!deletedActIds.has(a.id)),...customActs];
-  allActs.forEach(a=>{if(a.always||acts[a.id])burn+=a.cal;});
+  allActs.forEach(a=>{if(a.always||acts[a.id])burn+=a.cal;if(!a.always&&acts[a.id])extraBurn+=a.cal;});
   const def=burn-cal;
   const pct=Math.min(100,Math.max(0,(Math.abs(def)/calorieTarget)*100));
   document.getElementById('s-in').textContent=cal.toLocaleString();
@@ -667,6 +664,8 @@ function update(){
   pf.style.width=pct+'%';
   pf.style.background=def<0?'var(--red)':'';
   document.getElementById('prog-def').textContent=def.toLocaleString();
+  const extraEl=document.getElementById('s-extra');
+  if(extraEl)extraEl.textContent=extraBurn>0?'+'+extraBurn.toLocaleString()+' burned':'';
   currentDeficit=def;
   const todayValEl=document.getElementById('week-today-val');
   if(todayValEl)todayValEl.textContent=fmtDef(def,weekChartExpanded);
@@ -1396,7 +1395,7 @@ function initDrag(listType){
   });
 }
 
-renderDate();renderQuote();renderMeals();renderActs();renderTasks();
+renderDate();renderMeals();renderActs();renderTasks();
 loadChatHistory();
 setInterval(renderDate,60000);
 initFirebase();
