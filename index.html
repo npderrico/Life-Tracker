@@ -1082,8 +1082,8 @@ function renderWeekChart(){
   const totalFmt=fmtWeekTotal(total);
   const totalCls=total!==null&&total<0?' surplus':'';
   el.innerHTML=`<div class="week-chart-lbl">This Week <span style="color:var(--gold-light);font-style:normal">${arrow}</span></div>
-<div style="display:flex;align-items:center;">
-  <div class="week-cols">${colsHtml}</div>
+<div style="display:flex;align-items:center;width:100%;">
+  <div class="week-cols" style="flex:1;min-width:0;">${colsHtml}</div>
   <div class="week-total-panel">
     <div class="week-total-val${totalCls}" id="week-total-val">${totalFmt}</div>
     <div class="week-total-lbl">total</div>
