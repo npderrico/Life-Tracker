@@ -436,7 +436,7 @@ const FOODS=[
 ];
 
 const ACTS=[
-  {id:'tdee',name:'Base TDEE',sub:"6'2\" · 205 lbs · 27yo",cal:2900,always:true},
+  {id:'tdee',name:'Base TDEE',sub:"sedentary baseline · 6'2\"",cal:2364,always:true},
   {id:'bike40',name:'Bike 40 min @ 150W',cal:565},
   {id:'bike25',name:'Bike 25 min @ 150W',cal:350},
   {id:'pt30',name:'Light PT 30 min',cal:100},
@@ -487,7 +487,7 @@ const AGE=new Date().getFullYear()-1998;
 function calcTDEE(lbs){
   const kg=lbs*0.453592;
   const bmr=10*kg+6.25*187.96-5*AGE+5; // Mifflin-St Jeor, male, 6'2"
-  return Math.round(bmr*1.47);
+  return Math.round(bmr*1.2); // sedentary baseline — workouts logged separately
 }
 
 /* ══════════════════════════════════════════
@@ -790,7 +790,7 @@ function buildSystemPrompt(){
 
   return `You are an embedded assistant inside Nick's personal daily tracker app. You have full context of his day.
 
-NICK'S STATS: Male, 6'2", ~205 lbs, ${AGE} years old, recovering from shoulder surgery (limited left arm use). Daily deficit target: ${calorieTarget} calories. Protein goal: 200g/day. Base TDEE ~2,900 cal.
+NICK'S STATS: Male, 6'2", ~${weight} lbs, ${AGE} years old, recovering from shoulder surgery (limited left arm use). Daily deficit target: ${calorieTarget} calories. Protein goal: 200g/day. Base TDEE ~${calcTDEE(weight).toLocaleString()} cal (sedentary baseline — workouts logged on top).
 
 TODAY'S LOG (${TODAY}):
 - Eaten: ${eaten}
