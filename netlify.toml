@@ -1,4 +1,6 @@
 [build]
+  command = "node inject-config.js"
+  publish = "."
   functions = "netlify/functions"
 
 [[headers]]
@@ -12,7 +14,6 @@
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
 
-# Also catch the root path (served as index.html)
 [[headers]]
   for = "/"
   [headers.values]
