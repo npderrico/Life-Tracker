@@ -491,6 +491,7 @@ async function initFirebase(){
   try{
     const cfgRes=await fetch('/.netlify/functions/firebase-config');
     const FB_CONFIG=await cfgRes.json();
+    if(FB_CONFIG.error){throw new Error('Config: '+FB_CONFIG.error);}
     const {initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
     const {getDatabase,ref,set,onValue,get,push,remove}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
     const app=initializeApp(FB_CONFIG);
