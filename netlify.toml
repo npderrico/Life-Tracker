@@ -5,3 +5,15 @@
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
+
+# Never cache HTML — always serve the latest deploy
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Also catch the root path (served as index.html)
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
