@@ -363,7 +363,10 @@
   .mp-snack-card{background:var(--cream);padding:9px 9px 7px;display:flex;flex-direction:column;}
   .mp-snack-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-bottom:3px;}
   .mp-snack-name{font-family:var(--body);font-size:11px;color:var(--text);line-height:1.3;flex:1;}
+  .mp-snack-desc{font-size:9px;color:var(--muted);font-family:var(--body);line-height:1.35;margin-bottom:2px;font-style:italic;}
   .mp-snack-meta{font-size:9px;color:var(--muted2);font-family:var(--body);}
+  .mp-snack-add-btn{background:none;border:none;font-size:9px;color:var(--green2);cursor:pointer;touch-action:manipulation;font-family:var(--body);text-decoration:underline;text-underline-offset:2px;padding:3px 0 0;text-align:left;opacity:0.85;}
+  .mp-add-lib-btn{background:none;border:none;font-family:var(--body);font-size:10px;color:var(--green2);cursor:pointer;touch-action:manipulation;padding:5px 0 0;text-decoration:underline;text-underline-offset:2px;display:block;opacity:0.85;}
   .grocery-toggle-row{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding-right:18px;user-select:none;}
   .grocery-list{background:var(--cream2);}
   .grocery-item{display:flex;justify-content:space-between;align-items:center;padding:7px 14px;border-bottom:1px solid var(--cream3);}
@@ -2107,7 +2110,7 @@ function buildMealSysPrompt(intakeCal){
   return`You are a meal planning assistant for Nick, a 28-year-old active guy training 5x/week. Daily intake target: ~${intakeCal} kcal. Breakfast already handled (~850 kcal, ~40g protein).
 Lunch: cold/no reheat, wrap or sandwich, prepped ahead, ~450 kcal, ~35g protein.
 Dinner: home-cooked, same every night, batch-friendly, under 40 min active, ~650 kcal, ~50g protein.
-Snacks: grab-and-go, 150–250 cal, high protein.
+Snacks: grab-and-go, 150–250 cal, high protein. Include a brief description with specific portion (e.g. "1 oz jerky + 1 string cheese" or "2 tbsp almond butter on 1 rice cake").
 Be realistic — something someone would genuinely eat 5–7 days.${mealPrefs?`\nDislikes/preferences: ${mealPrefs}`:''}`;
 }
 
@@ -2185,7 +2188,7 @@ window.generateWeeklyPlan=async()=>{
   const el=document.getElementById('meal-plan-content');
   if(el)el.innerHTML='<div class="mp-loading">Crafting your meal plan…</div>';
   const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
-  const sys=buildMealSysPrompt(intakeCal)+'\n\nRespond with ONLY valid JSON, no markdown:\n{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"snacks":[{"name":"","cal":0,"protein":0,"groceries":[]},{"name":"","cal":0,"protein":0,"groceries":[]},{"name":"","cal":0,"protein":0,"groceries":[]}]}';
+  const sys=buildMealSysPrompt(intakeCal)+'\n\nRespond with ONLY valid JSON, no markdown:\n{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"snacks":[{"name":"","description":"","cal":0,"protein":0,"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"groceries":[]}]}';
   try{
     const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content:'Generate a varied high-protein meal plan for this week.'}]})});
     const data=await res.json();
@@ -2206,7 +2209,7 @@ window.regenSingleMeal=async(type,idx)=>{
   const cardEl=document.getElementById(cardId);
   if(cardEl)cardEl.innerHTML='<div style="padding:14px;text-align:center;font-family:var(--body);font-size:11px;color:var(--muted);font-style:italic">Regenerating…</div>';
   const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
-  const schema=isSnack?'{"snack":{"name":"","cal":0,"protein":0,"groceries":[]}}':type==='lunch'?'{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]}}':'{"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]}}';
+  const schema=isSnack?'{"snack":{"name":"","description":"","cal":0,"protein":0,"groceries":[]}}':type==='lunch'?'{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]}}':'{"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]}}';
   const ctx=`Current plan — Lunch: "${weeklyMealPlan.lunch?.name}", Dinner: "${weeklyMealPlan.dinner?.name}", Snacks: "${(weeklyMealPlan.snacks||[]).map(s=>s.name).join(', ')}". Replace "${current?.name}" with something DIFFERENT. Respond ONLY with valid JSON: ${schema}`;
   const sys=buildMealSysPrompt(intakeCal)+'\n\n'+ctx;
   try{
@@ -2235,7 +2238,9 @@ function renderMealPlan(plan){
         <span class="mp-snack-name">${s.name}</span>
         <button class="mp-item-regen" onclick="regenSingleMeal('snack',${i})" title="Swap snack">↻</button>
       </div>
+      ${s.description?`<div class="mp-snack-desc">${s.description}</div>`:''}
       <div class="mp-snack-meta">${s.cal} cal · ${s.protein}g pro</div>
+      <button class="mp-snack-add-btn" onclick="addMealToLibrary('snack',${i})">+ library</button>
     </div>`).join('');
   const totalCal=(plan.lunch?.cal||0)+(plan.dinner?.cal||0);
   el.innerHTML=`
@@ -2250,6 +2255,7 @@ function renderMealPlan(plan){
       <div class="mp-meal-desc">${plan.lunch?.description||''}</div>
       <div class="mp-meal-meta">${plan.lunch?.cal||0} cal · ${plan.lunch?.protein||0}g protein</div>
       ${plan.lunch?.prepNote?`<div class="mp-prep-note">${plan.lunch.prepNote}</div>`:''}
+      <button class="mp-add-lib-btn" onclick="addMealToLibrary('lunch')">+ Save to library</button>
     </div>
     <div class="mp-section-lbl">Dinner — nightly · home-cooked</div>
     <div class="mp-card" id="mp-card-dinner">
@@ -2260,6 +2266,7 @@ function renderMealPlan(plan){
       <div class="mp-meal-desc">${plan.dinner?.description||''}</div>
       <div class="mp-meal-meta">${plan.dinner?.cal||0} cal · ${plan.dinner?.protein||0}g protein</div>
       ${plan.dinner?.prepNote?`<div class="mp-prep-note">${plan.dinner.prepNote}</div>`:''}
+      <button class="mp-add-lib-btn" onclick="addMealToLibrary('dinner')">+ Save to library</button>
     </div>
     <div class="mp-section-lbl">Snack Options — pick 1–2 daily</div>
     <div class="mp-snack-grid">${snackCards}</div>
@@ -2269,6 +2276,34 @@ function renderMealPlan(plan){
       <div style="padding:8px 14px 10px;font-size:10px;color:var(--muted);font-family:var(--body);font-style:italic">All items for this week's lunch, dinner & snacks</div>
     </div>
     <div class="mp-footer">Lunch + dinner = ${totalCal} kcal · ${getWeekKey()}</div>`;
+}
+
+window.addMealToLibrary=(type,idx)=>{
+  let item;
+  if(type==='lunch')item=weeklyMealPlan?.lunch;
+  else if(type==='dinner')item=weeklyMealPlan?.dinner;
+  else item=weeklyMealPlan?.snacks?.[idx];
+  if(!item)return;
+  const {name,cal,protein,description}=item;
+  const desc=description||'';
+  if(fbPushFn&&fbDb&&fbRefFn){
+    fbPushFn(fbRefFn(fbDb,'savedMeals'),{name,cal,protein:protein||0,desc});
+  } else {
+    savedMeals.push({id:'sm'+Date.now(),name,cal,protein:protein||0,desc});
+    renderMealsLib();
+  }
+  showMpToast(`"${name}" added to library`);
+};
+
+function showMpToast(msg){
+  let t=document.getElementById('mp-toast');
+  if(!t){
+    t=document.createElement('div');t.id='mp-toast';
+    Object.assign(t.style,{position:'fixed',bottom:'70px',left:'50%',transform:'translateX(-50%)',background:'var(--green)',color:'var(--cream2)',fontFamily:'var(--body)',fontSize:'12px',padding:'8px 18px',zIndex:'60',whiteSpace:'nowrap',transition:'opacity 0.3s',borderTop:'2px solid var(--gold)',pointerEvents:'none'});
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._to);t._to=setTimeout(()=>t.style.opacity='0',2000);
 }
 
 window.toggleGrocery=()=>{
