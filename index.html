@@ -341,14 +341,28 @@
   .mp-week-lbl{font-family:var(--serif);font-size:14px;color:var(--text);font-style:italic;letter-spacing:0.02em;}
   .mp-regen-btn{background:none;border:none;font-family:var(--body);font-size:10px;color:var(--gold);cursor:pointer;touch-action:manipulation;letter-spacing:0.05em;}
   .mp-section-lbl{font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);font-style:italic;padding:9px 14px 6px;border-bottom:1px solid var(--border);}
+  .mp-prefs-bar{display:flex;align-items:flex-start;gap:8px;padding:8px 14px;background:var(--cream2);border-bottom:1px solid var(--border);}
+  .mp-prefs-label{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);font-style:italic;flex-shrink:0;padding-top:2px;white-space:nowrap;}
+  .mp-prefs-text{flex:1;font-size:12px;color:var(--text);font-family:var(--body);line-height:1.4;min-width:0;}
+  .mp-prefs-edit-btn{background:none;border:none;font-family:var(--body);font-size:10px;color:var(--gold);cursor:pointer;touch-action:manipulation;flex-shrink:0;text-decoration:underline;text-underline-offset:2px;padding:0;}
+  .mp-prefs-edit-wrap{padding:8px 14px 10px;background:var(--cream2);border-bottom:1px solid var(--border);}
+  .mp-prefs-textarea{width:100%;background:var(--cream);border:1px solid var(--border);padding:8px 10px;font-family:var(--body);font-size:13px;color:var(--text);outline:none;resize:none;min-height:58px;line-height:1.5;}
+  .mp-prefs-textarea:focus{border-color:var(--green2);}
+  .mp-prefs-actions{display:flex;gap:8px;margin-top:6px;}
+  .mp-prefs-save-btn{background:var(--green);color:var(--cream2);border:none;font-family:var(--body);font-size:12px;padding:6px 16px;cursor:pointer;touch-action:manipulation;}
+  .mp-prefs-cancel-btn{background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--body);font-size:12px;padding:6px 12px;cursor:pointer;}
   .mp-card{padding:12px 14px 10px;border-bottom:1px solid var(--cream3);}
-  .mp-meal-name{font-family:var(--serif);font-size:16px;color:var(--text);margin-bottom:4px;font-weight:500;}
+  .mp-card-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;}
+  .mp-item-regen{background:none;border:none;font-size:14px;color:var(--gold);cursor:pointer;touch-action:manipulation;padding:0;flex-shrink:0;opacity:0.75;line-height:1;}
+  .mp-item-regen:active{opacity:0.4;}
+  .mp-meal-name{font-family:var(--serif);font-size:16px;color:var(--text);font-weight:500;}
   .mp-meal-desc{font-size:12px;color:var(--muted);font-family:var(--body);line-height:1.55;margin-bottom:5px;}
   .mp-meal-meta{font-size:11px;color:var(--green2);font-family:var(--body);font-style:italic;margin-bottom:4px;}
   .mp-prep-note{font-size:11px;color:var(--gold);font-family:var(--body);font-style:italic;border-left:2px solid var(--gold);padding-left:8px;margin-top:3px;}
   .mp-snack-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);margin:0;}
-  .mp-snack-card{background:var(--cream);padding:9px 9px 7px;}
-  .mp-snack-name{font-family:var(--body);font-size:11px;color:var(--text);margin-bottom:3px;line-height:1.3;}
+  .mp-snack-card{background:var(--cream);padding:9px 9px 7px;display:flex;flex-direction:column;}
+  .mp-snack-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-bottom:3px;}
+  .mp-snack-name{font-family:var(--body);font-size:11px;color:var(--text);line-height:1.3;flex:1;}
   .mp-snack-meta{font-size:9px;color:var(--muted2);font-family:var(--body);}
   .grocery-toggle-row{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding-right:18px;user-select:none;}
   .grocery-list{background:var(--cream2);}
@@ -635,7 +649,7 @@ let weight=205, calorieTarget=500;
 let currentDeficit=0, weeklyData={}, weightData={};
 let weekChartExpanded=false, weighInChecked=false;
 let bfLog={};
-let weeklyMealPlan=null, mealPlanLoading=false;
+let weeklyMealPlan=null, mealPlanLoading=false, mealPrefs='';
 let workoutLog={}, workoutExpanded={}, wlFbRef=null, programWeek=1;
 let selectedWorkoutDayIdx=new Date().getDay(), workoutLogCache={}, lastWeekLogCache={};
 let restTimerInterval=null, restTimerSecs=0;
@@ -773,6 +787,10 @@ async function initFirebase(){
     onValue(wlRef,(snap)=>{workoutLog=snap.val()||{};if(activeTab==='workout')renderWorkout();});
     wlFbRef=wlRef;
     fetchLastWeekLog(new Date().getDay());
+    // Meal preferences
+    onValue(ref(fbDb,'mealPreferences'),(snap)=>{
+      mealPrefs=snap.val()||'';
+    });
     // Body fat log
     onValue(ref(fbDb,'progress/bf'),(snap)=>{
       bfLog=snap.val()||{};
@@ -2085,6 +2103,59 @@ function getWeekKey(){
   return`${d.getFullYear()}-W${week}`;
 }
 
+function buildMealSysPrompt(intakeCal){
+  return`You are a meal planning assistant for Nick, a 28-year-old active guy training 5x/week. Daily intake target: ~${intakeCal} kcal. Breakfast already handled (~850 kcal, ~40g protein).
+Lunch: cold/no reheat, wrap or sandwich, prepped ahead, ~450 kcal, ~35g protein.
+Dinner: home-cooked, same every night, batch-friendly, under 40 min active, ~650 kcal, ~50g protein.
+Snacks: grab-and-go, 150–250 cal, high protein.
+Be realistic — something someone would genuinely eat 5–7 days.${mealPrefs?`\nDislikes/preferences: ${mealPrefs}`:''}`;
+}
+
+function savePlanToFirebase(){
+  if(fbDb&&fbRefFn&&weeklyMealPlan){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
+      set(fbRefFn(fbDb,`mealPlan/${getWeekKey()}`),weeklyMealPlan).catch(()=>{});
+    });
+  }
+}
+
+function buildPrefsBarHtml(){
+  const txt=mealPrefs||'<span style="color:var(--muted2);font-style:italic">None saved — e.g. "no tuna, prefer chicken"</span>';
+  return`<div class="mp-prefs-bar">
+    <span class="mp-prefs-label">Dislikes</span>
+    <span class="mp-prefs-text" id="mp-prefs-text">${mealPrefs||'<span style="color:var(--muted2);font-style:italic">None saved</span>'}</span>
+    <button class="mp-prefs-edit-btn" onclick="togglePrefsEdit()">edit</button>
+  </div>
+  <div class="mp-prefs-edit-wrap" id="mp-prefs-edit-wrap" style="display:none">
+    <textarea class="mp-prefs-textarea" id="mp-prefs-inp" placeholder="e.g. no tuna, no shellfish, dislike cilantro, prefer chicken and beef…">${mealPrefs}</textarea>
+    <div class="mp-prefs-actions">
+      <button class="mp-prefs-save-btn" onclick="saveMealPrefs()">Save preferences</button>
+      <button class="mp-prefs-cancel-btn" onclick="togglePrefsEdit()">Cancel</button>
+    </div>
+  </div>`;
+}
+
+window.togglePrefsEdit=()=>{
+  const wrap=document.getElementById('mp-prefs-edit-wrap');
+  if(!wrap)return;
+  const open=wrap.style.display!=='none';
+  wrap.style.display=open?'none':'block';
+  if(!open){const inp=document.getElementById('mp-prefs-inp');if(inp){inp.value=mealPrefs;inp.focus();}}
+};
+
+window.saveMealPrefs=()=>{
+  const val=(document.getElementById('mp-prefs-inp')?.value||'').trim();
+  mealPrefs=val;
+  if(fbDb&&fbRefFn){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
+      set(fbRefFn(fbDb,'mealPreferences'),val).catch(()=>{});
+    });
+  }
+  const txtEl=document.getElementById('mp-prefs-text');
+  if(txtEl)txtEl.innerHTML=val||'<span style="color:var(--muted2);font-style:italic">None saved</span>';
+  togglePrefsEdit();
+};
+
 async function fetchMealPlan(){
   const el=document.getElementById('meal-plan-content');
   if(!el)return;
@@ -2102,7 +2173,7 @@ async function fetchMealPlan(){
 function renderMealPlanPrompt(){
   const el=document.getElementById('meal-plan-content');
   if(!el)return;
-  el.innerHTML=`<div class="mp-gen-wrap">
+  el.innerHTML=`${buildPrefsBarHtml()}<div class="mp-gen-wrap">
     <div class="mp-gen-note">No meal plan yet for this week.<br>Claude will suggest a lunch, dinner, and snacks<br>that fit your calorie goal and prep style.</div>
     <button class="mp-gen-btn" onclick="generateWeeklyPlan()">Generate This Week's Plan</button>
   </div>`;
@@ -2114,61 +2185,78 @@ window.generateWeeklyPlan=async()=>{
   const el=document.getElementById('meal-plan-content');
   if(el)el.innerHTML='<div class="mp-loading">Crafting your meal plan…</div>';
   const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
-  const sys=`You are a meal planning assistant for Nick, a 28-year-old active guy training 5x/week. Daily calorie intake target: ~${intakeCal} kcal. Breakfast is already handled (~850 kcal, ~40g protein — eggs, Greek yogurt, coffee creamer). Plan lunch + dinner + 3 snack options for the week.
-
-Nick's preferences:
-- LUNCH: Must be cold — no reheating at work. Wrap or sandwich format. Prepped Sunday night or morning of. High protein, filling, easy to pack.
-- DINNER: Home-cooked. Same meal every night Mon–Sun (Nick likes consistency). Either batch-cooked on weekends or quick to cook nightly (under 40 min active time). Healthy, high protein. Semi-prepped is ideal.
-- SNACKS: 3 grab-and-go options, 150–250 cal each. High protein preferred.
-- Lunch target: ~450 kcal / ~35g protein. Dinner target: ~650 kcal / ~50g protein.
-- Be realistic — something someone would genuinely want to eat 5–7 days in a row.
-- Vary from common options. Be creative but practical.
-
-Respond with ONLY valid JSON, no markdown fences, no extra text:
-{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"snacks":[{"name":"","cal":0,"protein":0,"groceries":[]},{"name":"","cal":0,"protein":0,"groceries":[]},{"name":"","cal":0,"protein":0,"groceries":[]}]}`;
+  const sys=buildMealSysPrompt(intakeCal)+'\n\nRespond with ONLY valid JSON, no markdown:\n{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"snacks":[{"name":"","cal":0,"protein":0,"groceries":[]},{"name":"","cal":0,"protein":0,"groceries":[]},{"name":"","cal":0,"protein":0,"groceries":[]}]}';
   try{
     const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content:'Generate a varied high-protein meal plan for this week.'}]})});
     const data=await res.json();
-    let text='';
-    for(const b of(data.content||[])){if(b.type==='text')text+=b.text;}
-    const clean=text.trim().replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'');
-    const plan=JSON.parse(clean);
-    weeklyMealPlan=plan;
-    if(fbDb&&fbRefFn){
-      import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
-        set(fbRefFn(fbDb,`mealPlan/${getWeekKey()}`),plan).catch(()=>{});
-      });
-    }
-    renderMealPlan(plan);
+    let text='';for(const b of(data.content||[])){if(b.type==='text')text+=b.text;}
+    const plan=JSON.parse(text.trim().replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,''));
+    weeklyMealPlan=plan;savePlanToFirebase();renderMealPlan(plan);
   }catch(e){
-    if(el)el.innerHTML=`<div class="mp-gen-wrap"><div class="mp-gen-note" style="color:var(--red)">Something went wrong. Check connection and retry.</div><button class="mp-gen-btn" onclick="generateWeeklyPlan()">Retry</button></div>`;
+    if(el)el.innerHTML=`${buildPrefsBarHtml()}<div class="mp-gen-wrap"><div class="mp-gen-note" style="color:var(--red)">Something went wrong — check connection and retry.</div><button class="mp-gen-btn" onclick="generateWeeklyPlan()">Retry</button></div>`;
   }finally{mealPlanLoading=false;}
+};
+
+window.regenSingleMeal=async(type,idx)=>{
+  if(mealPlanLoading)return;
+  mealPlanLoading=true;
+  const isSnack=type==='snack';
+  const current=isSnack?weeklyMealPlan.snacks[idx]:weeklyMealPlan[type];
+  const cardId=isSnack?`mp-snack-${idx}`:`mp-card-${type}`;
+  const cardEl=document.getElementById(cardId);
+  if(cardEl)cardEl.innerHTML='<div style="padding:14px;text-align:center;font-family:var(--body);font-size:11px;color:var(--muted);font-style:italic">Regenerating…</div>';
+  const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
+  const schema=isSnack?'{"snack":{"name":"","cal":0,"protein":0,"groceries":[]}}':type==='lunch'?'{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]}}':'{"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]}}';
+  const ctx=`Current plan — Lunch: "${weeklyMealPlan.lunch?.name}", Dinner: "${weeklyMealPlan.dinner?.name}", Snacks: "${(weeklyMealPlan.snacks||[]).map(s=>s.name).join(', ')}". Replace "${current?.name}" with something DIFFERENT. Respond ONLY with valid JSON: ${schema}`;
+  const sys=buildMealSysPrompt(intakeCal)+'\n\n'+ctx;
+  try{
+    const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content:`Give me a different ${isSnack?'snack':type} — not "${current?.name}".`}]})});
+    const data=await res.json();
+    let text='';for(const b of(data.content||[])){if(b.type==='text')text+=b.text;}
+    const result=JSON.parse(text.trim().replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,''));
+    if(isSnack)weeklyMealPlan.snacks[idx]=result.snack;
+    else weeklyMealPlan[type]=result[type];
+    savePlanToFirebase();renderMealPlan(weeklyMealPlan);
+  }catch(e){renderMealPlan(weeklyMealPlan);}
+  finally{mealPlanLoading=false;}
 };
 
 function renderMealPlan(plan){
   const el=document.getElementById('meal-plan-content');
   if(!el)return;
-  // Build grocery list — deduplicated across all sections
   const groceries={};
   const tag=(items,label)=>(items||[]).forEach(g=>{const k=g.toLowerCase().trim();if(!groceries[k])groceries[k]={name:g,tags:[]};if(!groceries[k].tags.includes(label))groceries[k].tags.push(label);});
-  tag(plan.lunch?.groceries,'Lunch');
-  tag(plan.dinner?.groceries,'Dinner');
+  tag(plan.lunch?.groceries,'Lunch');tag(plan.dinner?.groceries,'Dinner');
   (plan.snacks||[]).forEach(s=>tag(s.groceries,'Snacks'));
   const groceryRows=Object.values(groceries).sort((a,b)=>a.name.localeCompare(b.name)).map(g=>`<div class="grocery-item"><span class="grocery-item-name">${g.name}</span><span class="grocery-item-tag">${g.tags.join(' · ')}</span></div>`).join('');
-  const snackCards=(plan.snacks||[]).map(s=>`<div class="mp-snack-card"><div class="mp-snack-name">${s.name}</div><div class="mp-snack-meta">${s.cal} cal · ${s.protein}g pro</div></div>`).join('');
+  const snackCards=(plan.snacks||[]).map((s,i)=>`
+    <div class="mp-snack-card" id="mp-snack-${i}">
+      <div class="mp-snack-hdr">
+        <span class="mp-snack-name">${s.name}</span>
+        <button class="mp-item-regen" onclick="regenSingleMeal('snack',${i})" title="Swap snack">↻</button>
+      </div>
+      <div class="mp-snack-meta">${s.cal} cal · ${s.protein}g pro</div>
+    </div>`).join('');
   const totalCal=(plan.lunch?.cal||0)+(plan.dinner?.cal||0);
   el.innerHTML=`
-    <div class="mp-week-hdr"><span class="mp-week-lbl">This Week's Plan</span><button class="mp-regen-btn" onclick="regenMealPlan()">↻ New plan</button></div>
+    ${buildPrefsBarHtml()}
+    <div class="mp-week-hdr"><span class="mp-week-lbl">This Week's Plan</span><button class="mp-regen-btn" onclick="regenMealPlan()">↻ Full plan</button></div>
     <div class="mp-section-lbl">Lunch — daily · cold · prep ahead</div>
-    <div class="mp-card">
-      <div class="mp-meal-name">${plan.lunch?.name||''}</div>
+    <div class="mp-card" id="mp-card-lunch">
+      <div class="mp-card-hdr">
+        <div class="mp-meal-name">${plan.lunch?.name||''}</div>
+        <button class="mp-item-regen" onclick="regenSingleMeal('lunch')" title="Swap lunch">↻</button>
+      </div>
       <div class="mp-meal-desc">${plan.lunch?.description||''}</div>
       <div class="mp-meal-meta">${plan.lunch?.cal||0} cal · ${plan.lunch?.protein||0}g protein</div>
       ${plan.lunch?.prepNote?`<div class="mp-prep-note">${plan.lunch.prepNote}</div>`:''}
     </div>
     <div class="mp-section-lbl">Dinner — nightly · home-cooked</div>
-    <div class="mp-card">
-      <div class="mp-meal-name">${plan.dinner?.name||''}</div>
+    <div class="mp-card" id="mp-card-dinner">
+      <div class="mp-card-hdr">
+        <div class="mp-meal-name">${plan.dinner?.name||''}</div>
+        <button class="mp-item-regen" onclick="regenSingleMeal('dinner')" title="Swap dinner">↻</button>
+      </div>
       <div class="mp-meal-desc">${plan.dinner?.description||''}</div>
       <div class="mp-meal-meta">${plan.dinner?.cal||0} cal · ${plan.dinner?.protein||0}g protein</div>
       ${plan.dinner?.prepNote?`<div class="mp-prep-note">${plan.dinner.prepNote}</div>`:''}
