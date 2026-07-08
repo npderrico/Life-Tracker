@@ -32,6 +32,20 @@ exports.handler = async (event) => {
               },
               required: ['date']
             }
+          },
+          {
+            name: 'get_past_workout',
+            description: "Fetch Nick's workout log for a specific past date — exercises completed, sets/reps/weight logged, run duration, and calories burned. Use when he asks about a past workout, what weight he used, how his session went, or training progress.",
+            input_schema: {
+              type: 'object',
+              properties: {
+                date: {
+                  type: 'string',
+                  description: 'The date to fetch. Accepts "yesterday", "Monday", "last Friday", or ISO format.'
+                }
+              },
+              required: ['date']
+            }
           }
         ],
         messages: body.messages
