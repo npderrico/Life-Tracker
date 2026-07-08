@@ -336,6 +336,24 @@
   /* LAST-WEEK WEIGHT CHIP */
   .lw-chip{font-size:8px;color:var(--gold);font-family:var(--body);font-style:italic;flex-shrink:0;min-width:26px;text-align:right;opacity:0.85;}
   .run-lbl{font-size:10px;color:var(--muted);font-family:var(--body);}
+  /* PROGRESS TAB */
+  .prog-wrap{padding:4px 0 24px;}
+  .prog-section{margin:0 0 18px;}
+  .prog-section-lbl{font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);font-style:italic;padding:10px 14px 8px;border-bottom:1px solid var(--border);}
+  .prog-chart-wrap{padding:10px 14px 4px;overflow:hidden;}
+  .prog-chart-wrap svg{width:100%;height:auto;display:block;}
+  .prog-empty{font-size:12px;color:var(--muted);font-family:var(--body);font-style:italic;padding:12px 14px;text-align:center;}
+  .prog-trend{padding:2px 14px 6px;font-size:11px;font-family:var(--body);font-style:italic;}
+  .bf-entry-row{display:flex;gap:8px;padding:8px 14px 0;align-items:center;}
+  .bf-inp{flex:1;border:1px solid var(--border);background:var(--cream2);padding:6px 8px;font-family:var(--body);font-size:14px;color:var(--text);outline:none;min-width:0;}
+  .bf-inp:focus{border-color:var(--gold);}
+  .bf-submit{background:var(--green);color:var(--cream2);border:none;font-family:var(--body);font-size:12px;padding:6px 14px;cursor:pointer;touch-action:manipulation;white-space:nowrap;}
+  .pr-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin:10px 14px 0;}
+  .pr-card{background:var(--cream);padding:10px 10px 6px;display:flex;flex-direction:column;gap:3px;overflow:hidden;}
+  .pr-card-name{font-family:var(--body);font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pr-card-val{font-family:var(--serif);font-size:20px;color:var(--green);line-height:1;display:inline;}
+  .pr-card-unit{font-size:9px;color:var(--muted2);font-family:var(--body);}
+  .pr-card svg{width:100%;height:auto;display:block;margin-top:3px;}
   .rest-timer-bar{position:fixed;bottom:54px;left:0;right:0;background:var(--green);border-top:2px solid var(--gold);padding:8px 14px;display:flex;align-items:center;justify-content:space-between;z-index:36;}
   .rest-timer-left{display:flex;align-items:baseline;gap:7px;}
   .rest-timer-lbl{font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);font-style:italic;}
@@ -441,6 +459,10 @@
   <div id="workout-content"></div>
 </div>
 
+<div id="view-progress" style="display:none">
+  <div id="progress-content"></div>
+</div>
+
 <!-- REST TIMER -->
 <div class="rest-timer-bar" id="rest-timer-bar" style="display:none">
   <div class="rest-timer-left">
@@ -462,6 +484,10 @@
   <button class="tab-btn" id="tab-workout" onclick="switchTab('workout')">
     <span class="tab-icon">◈</span>
     <span class="tab-label">Workout</span>
+  </button>
+  <button class="tab-btn" id="tab-progress" onclick="switchTab('progress')">
+    <span class="tab-icon">◬</span>
+    <span class="tab-label">Progress</span>
   </button>
 </nav>
 
@@ -583,6 +609,7 @@ let savedMeals=[], activeTab='today';
 let weight=205, calorieTarget=500;
 let currentDeficit=0, weeklyData={}, weightData={};
 let weekChartExpanded=false, weighInChecked=false;
+let bfLog={};
 let workoutLog={}, workoutExpanded={}, wlFbRef=null, programWeek=1;
 let selectedWorkoutDayIdx=new Date().getDay(), workoutLogCache={}, lastWeekLogCache={};
 let restTimerInterval=null, restTimerSecs=0;
@@ -720,6 +747,11 @@ async function initFirebase(){
     onValue(wlRef,(snap)=>{workoutLog=snap.val()||{};if(activeTab==='workout')renderWorkout();});
     wlFbRef=wlRef;
     fetchLastWeekLog(new Date().getDay());
+    // Body fat log
+    onValue(ref(fbDb,'progress/bf'),(snap)=>{
+      bfLog=snap.val()||{};
+      if(activeTab==='progress')fetchProgressData();
+    });
     // Program week state
     get(ref(fbDb,'workoutState')).then(snap=>{const s=snap.val();if(s&&s.week)programWeek=s.week;}).catch(()=>{});
   }catch(e){
@@ -1380,11 +1412,14 @@ window.switchTab=(tab)=>{
   document.getElementById('view-today').style.display=tab==='today'?'':'none';
   document.getElementById('view-meals').style.display=tab==='meals'?'':'none';
   document.getElementById('view-workout').style.display=tab==='workout'?'':'none';
+  document.getElementById('view-progress').style.display=tab==='progress'?'':'none';
   document.getElementById('tab-today').classList.toggle('active',tab==='today');
   document.getElementById('tab-meals').classList.toggle('active',tab==='meals');
   document.getElementById('tab-workout').classList.toggle('active',tab==='workout');
+  document.getElementById('tab-progress').classList.toggle('active',tab==='progress');
   if(tab==='meals')renderMealsLib();
   if(tab==='workout'){fetchLastWeekLog(selectedWorkoutDayIdx);renderWorkout();}
+  if(tab==='progress')fetchProgressData();
 };
 
 function renderMealsLib(){
@@ -2013,6 +2048,202 @@ async function fetchPastWorkoutForClaude(dateStr){
     return out;
   }catch(e){return`Error: ${e.message}`;}
 }
+
+/* ═══════════════════════════════════════════
+   PROGRESS TAB
+══════════════════════════════════════════ */
+function buildLineChart(data,{color='#1a3d2b',fillColor='',showDots=true,unit='',h=80,sparkline=false}={}){
+  if(!data||data.length===0)return'';
+  const W=320,H=h;
+  const pad=sparkline?{t:2,b:2,l:2,r:2}:{t:8,b:22,l:30,r:36};
+  const vals=data.map(d=>d.y);
+  const lo=Math.min(...vals);const hi=Math.max(...vals);
+  const range=hi-lo||1;
+  const n=data.length;
+  const xS=(i)=>pad.l+(n<2?0.5:i/(n-1))*(W-pad.l-pad.r);
+  const yS=(v)=>pad.t+(1-(v-lo)/range)*(H-pad.t-pad.b);
+  const pts=data.map((d,i)=>`${xS(i).toFixed(1)},${yS(d.y).toFixed(1)}`).join(' ');
+  const firstX=xS(0).toFixed(1);const lastX=xS(n-1).toFixed(1);const botY=(H-pad.b).toFixed(1);
+  const fill=fillColor?`<polygon points="${firstX},${botY} ${pts} ${lastX},${botY}" fill="${fillColor}" opacity="0.12"/>`:'';
+  const dots=showDots?data.map((d,i)=>{
+    const isLast=i===n-1;
+    return`<circle cx="${xS(i).toFixed(1)}" cy="${yS(d.y).toFixed(1)}" r="${isLast?3:2}" fill="${color}" opacity="${isLast?1:0.5}"/>`;
+  }).join(''):'';
+  if(sparkline){
+    return`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      ${fill}<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+  }
+  // Axis labels
+  const midVal=(lo+hi)/2;
+  const yLabels=[
+    `<text x="${pad.l-4}" y="${yS(hi)+3}" text-anchor="end" font-size="7.5" fill="var(--muted2)" font-family="'EB Garamond',serif">${hi.toFixed(1)}</text>`,
+    `<text x="${pad.l-4}" y="${yS(midVal)+3}" text-anchor="end" font-size="7.5" fill="var(--muted2)" font-family="'EB Garamond',serif">${midVal.toFixed(1)}</text>`,
+    `<text x="${pad.l-4}" y="${yS(lo)+3}" text-anchor="end" font-size="7.5" fill="var(--muted2)" font-family="'EB Garamond',serif">${lo.toFixed(1)}</text>`,
+  ].join('');
+  const xIdxs=[0,...(n>2?[Math.round((n-1)/2)]:[]),n-1].filter((v,i,a)=>a.indexOf(v)===i);
+  const xLabels=xIdxs.map(i=>`<text x="${xS(i).toFixed(1)}" y="${H-5}" text-anchor="${i===0?'start':i===n-1?'end':'middle'}" font-size="7.5" fill="var(--muted2)" font-family="'EB Garamond',serif" font-style="italic">${data[i].label||''}</text>`).join('');
+  // Latest value callout
+  const last=data[n-1];
+  const lx=parseFloat(xS(n-1).toFixed(1));const ly=parseFloat(yS(last.y).toFixed(1));
+  const callout=`<text x="${Math.min(lx+4,W-4)}" y="${ly+3}" font-size="8.5" fill="${color}" font-family="'EB Garamond',serif" font-weight="600" text-anchor="${lx>W-60?'end':'start'}">${last.y}${unit}</text>`;
+  return`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+    <line x1="${pad.l}" y1="${pad.t}" x2="${W-pad.r}" y2="${pad.t}" stroke="var(--border)" stroke-width="0.5"/>
+    <line x1="${pad.l}" y1="${yS(midVal).toFixed(1)}" x2="${W-pad.r}" y2="${yS(midVal).toFixed(1)}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,3"/>
+    <line x1="${pad.l}" y1="${botY}" x2="${W-pad.r}" y2="${botY}" stroke="var(--border)" stroke-width="0.5"/>
+    <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${botY}" stroke="var(--border)" stroke-width="0.5"/>
+    ${fill}
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${yLabels}${xLabels}${callout}
+  </svg>`;
+}
+
+async function fetchProgressData(){
+  const el=document.getElementById('progress-content');
+  if(!el)return;
+  el.innerHTML='<div class="prog-empty" style="padding:32px 14px">Loading…</div>';
+  const today=new Date();
+
+  if(!fbDb||!fbRefFn||!fbGetFn){
+    // Offline: render with current weight only
+    const wd=weight?[{y:weight,label:'today'}]:[];
+    renderProgressHTML(wd,{},[]); return;
+  }
+
+  // Weight: last 30 days
+  const wDates=Array.from({length:30},(_,i)=>{const d=new Date(today);d.setDate(today.getDate()-(29-i));return d;});
+  // Workout logs: last 6 weeks
+  const wlDates=Array.from({length:42},(_,i)=>{const d=new Date(today);d.setDate(today.getDate()-(41-i));return d;});
+
+  const [wSnaps,wlSnaps]=await Promise.all([
+    Promise.all(wDates.map(d=>fbGetFn(fbRefFn(fbDb,`tracker/${d.toDateString().replace(/ /g,'-')}/weight`)).catch(()=>null))),
+    Promise.all(wlDates.map(d=>fbGetFn(fbRefFn(fbDb,`workoutLogs/${d.toDateString().replace(/ /g,'-')}`)).catch(()=>null))),
+  ]);
+
+  const weightData=[];
+  wSnaps.forEach((snap,i)=>{
+    const w=snap?.val();
+    if(w>0)weightData.push({y:parseFloat(w.toFixed(1)),label:wDates[i].toLocaleDateString('en-US',{month:'numeric',day:'numeric'}),date:wDates[i]});
+  });
+
+  const prMap={};
+  const paceData=[];
+  wlSnaps.forEach((snap,i)=>{
+    const wl=snap?.val(); if(!wl)return;
+    const d=wlDates[i];
+    const lbl=d.toLocaleDateString('en-US',{month:'numeric',day:'numeric'});
+    if(wl.exercises){
+      Object.entries(wl.exercises).forEach(([exId,exData])=>{
+        const best=(exData.sets||[]).filter(s=>s.done&&s.weight).reduce((b,s)=>Math.max(b,s.weight||0),0);
+        if(best>0){if(!prMap[exId])prMap[exId]=[];prMap[exId].push({y:best,label:lbl,date:d});}
+      });
+    }
+    if(wl.run?.done&&wl.run.durationMin>0&&wl.run.distanceMi>0){
+      const pace=parseFloat((wl.run.durationMin/wl.run.distanceMi).toFixed(2));
+      paceData.push({y:pace,label:lbl,date:d});
+    }
+  });
+
+  renderProgressHTML(weightData,prMap,paceData);
+}
+
+function renderProgressHTML(weightData,prMap,paceData){
+  const el=document.getElementById('progress-content');
+  if(!el)return;
+  let html=`<div class="prog-wrap">`;
+
+  // ── Weight ──────────────────────────────
+  html+=`<div class="prog-section"><div class="prog-section-lbl">Weight — lbs</div>`;
+  if(weightData.length>=2){
+    const delta=weightData[weightData.length-1].y-weightData[0].y;
+    const col=delta<=0?'var(--green2)':'var(--red)';
+    html+=`<div class="prog-chart-wrap">${buildLineChart(weightData,{color:'var(--green)',fillColor:'var(--green)',showDots:weightData.length<=20})}</div>
+    <div class="prog-trend" style="color:${col}">${delta<=0?'▼':'▲'} ${Math.abs(delta).toFixed(1)} lbs over ${weightData.length} days</div>`;
+  } else if(weightData.length===1){
+    html+=`<div class="prog-empty">One weigh-in recorded (${weightData[0].y} lbs). Log daily to see trend.</div>`;
+  } else {
+    html+=`<div class="prog-empty">No weight logs yet. Log each morning via the weigh-in prompt.</div>`;
+  }
+  html+=`</div>`;
+
+  // ── Body Fat % ──────────────────────────
+  html+=`<div class="prog-section"><div class="prog-section-lbl">Body Fat % — monthly</div>`;
+  const bfEntries=Object.entries(bfLog).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>({y:parseFloat(v),label:k.slice(5)}));
+  if(bfEntries.length>=2){
+    const delta=bfEntries[bfEntries.length-1].y-bfEntries[0].y;
+    const col=delta<=0?'var(--green2)':'var(--red)';
+    html+=`<div class="prog-chart-wrap">${buildLineChart(bfEntries,{color:'var(--gold)',fillColor:'var(--gold)',unit:'%',showDots:true})}</div>
+    <div class="prog-trend" style="color:${col}">${delta<=0?'▼':'▲'} ${Math.abs(delta).toFixed(1)}% over ${bfEntries.length} months</div>`;
+  } else if(bfEntries.length===1){
+    html+=`<div class="prog-empty">First reading: ${bfEntries[0].y}%. Recheck monthly (calipers, InBody, or DEXA).</div>`;
+  } else {
+    html+=`<div class="prog-empty">No BF% entries yet. Log monthly below.</div>`;
+  }
+  const curMonth=new Date().toISOString().slice(0,7);
+  html+=`<div class="bf-entry-row">
+    <input class="bf-inp" type="number" inputmode="decimal" step="0.1" min="3" max="50" id="bf-inp" value="${bfLog[curMonth]||''}" placeholder="${new Date().toLocaleDateString('en-US',{month:'short',year:'numeric'})} BF%">
+    <button class="bf-submit" onclick="submitBF()">Log</button>
+  </div></div>`;
+
+  // ── Strength PRs ────────────────────────
+  html+=`<div class="prog-section"><div class="prog-section-lbl">Strength — 6-week best (lbs)</div>`;
+  const ALL_EX=Object.values(WORKOUT_DAYS).flatMap(d=>d.exercises||[]);
+  const prCards=ALL_EX.filter((ex,i,a)=>a.findIndex(e=>e.id===ex.id)===i&&prMap[ex.id]?.length>0);
+  if(prCards.length){
+    html+=`<div class="pr-grid">`;
+    prCards.forEach(ex=>{
+      const data=prMap[ex.id];
+      const best=Math.max(...data.map(d=>d.y));
+      const latest=data[data.length-1].y;
+      const isNewPR=latest>=best&&data.length>1;
+      const trend=data.length>=2?latest-data[0].y:0;
+      const tCol=trend>=0?'var(--green2)':'var(--red)';
+      html+=`<div class="pr-card">
+        <div class="pr-card-name">${ex.name}</div>
+        <div><span class="pr-card-val">${latest}</span> <span class="pr-card-unit">lbs${isNewPR?' ★':''}</span></div>
+        ${data.length>=2?`<div style="color:${tCol};font-size:9px;font-family:var(--body)">${trend>=0?'+':''}${trend.toFixed(0)} lbs</div>`:''}
+        ${data.length>=2?buildLineChart(data,{color:'var(--green3)',fillColor:'',showDots:false,h:28,sparkline:true}):''}
+      </div>`;
+    });
+    html+=`</div>`;
+  } else {
+    html+=`<div class="prog-empty">No strength data yet. Complete a lift session to start tracking.</div>`;
+  }
+  html+=`</div>`;
+
+  // ── Run Pace ────────────────────────────
+  html+=`<div class="prog-section"><div class="prog-section-lbl">Run Pace — min/mile</div>`;
+  if(paceData.length>=2){
+    const latest=paceData[paceData.length-1].y;
+    const pm=Math.floor(latest);const ps=Math.round((latest-pm)*60);
+    const delta=latest-paceData[0].y;
+    const col=delta<=0?'var(--green2)':'var(--red)';
+    html+=`<div class="prog-chart-wrap">${buildLineChart(paceData,{color:'var(--green)',fillColor:'var(--green)',showDots:paceData.length<=10})}</div>
+    <div class="prog-trend">Latest: <strong>${pm}:${String(ps).padStart(2,'0')}/mi</strong> <span style="color:${col};margin-left:8px">${delta<=0?'▼':'▲'} ${Math.abs(delta).toFixed(2)} min/mi</span></div>`;
+  } else if(paceData.length===1){
+    const p=paceData[0].y;const pm=Math.floor(p);const ps=Math.round((p-pm)*60);
+    html+=`<div class="prog-empty">First run: ${pm}:${String(ps).padStart(2,'0')}/mi — log more runs with distance to see trend.</div>`;
+  } else {
+    html+=`<div class="prog-empty">No run data yet. Enter miles after a run to track pace.</div>`;
+  }
+  html+=`</div>`;
+
+  html+=`</div>`;
+  el.innerHTML=html;
+}
+
+window.submitBF=()=>{
+  const val=parseFloat(document.getElementById('bf-inp')?.value);
+  if(isNaN(val)||val<3||val>50){alert('Enter a valid BF% (3–50).');return;}
+  const month=new Date().toISOString().slice(0,7);
+  bfLog[month]=val;
+  if(fbDb&&fbRefFn){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
+      set(fbRefFn(fbDb,'progress/bf'),bfLog).catch(()=>{});
+    });
+  }
+  fetchProgressData();
+};
 
 try{const _wl=localStorage.getItem('nt5-wl-'+TODAY);if(_wl)workoutLog=JSON.parse(_wl);}catch(e){}
 renderDate();renderMeals();renderActs();renderTasks();
