@@ -814,7 +814,7 @@ const FIN_METCON=[
   {name:'Mountain Climber',detail:'drive the knees · keep hips level',rx:'3×30s'},
 ];
 const WORKOUT_DAYS={
-  mon:{name:'Upper Pull + Arms',type:'lift',est:380,warmup:WU_UPPER,finisher:{label:'Core Finisher',items:FIN_ABS},exercises:[
+  mon:{name:'Upper Pull + Arms',type:'lift',est:380,warmup:WU_UPPER,finishers:[{label:'Cardio Finisher',items:FIN_CARDIO},{label:'Ab Finisher',items:FIN_ABS}],exercises:[
     {id:'latPD',name:'Lat Pulldown',detail:'neutral grip · to chest',sets:4,rx:'8–10',rpe:8,rest:90},
     {id:'cRow',name:'Seated Cable Row',detail:'V-bar · full scap retraction',sets:4,rx:'10–12',rpe:8,rest:90},
     {id:'csRow',name:'Chest-Supported DB Row',detail:'elbows at 45°',sets:3,rx:'12–15',rpe:8,rest:75},
@@ -822,7 +822,7 @@ const WORKOUT_DAYS={
     {id:'incCurl',name:'Incline DB Curl',detail:'long head stretch',sets:3,rx:'10–12',rpe:8,rest:60},
     {id:'hamCurl',name:'Hammer Curl',detail:'alternating',sets:3,rx:'12/arm',rpe:8,rest:60},
   ]},
-  tue:{name:'Lower — Squat + Easy Run',type:'lift+run',est:560,warmup:WU_LOWER,finisher:{label:'Cardio Finisher',items:FIN_CARDIO},
+  tue:{name:'Lower — Squat + Easy Run',type:'lift+run',est:560,warmup:WU_LOWER,finishers:[{label:'Cardio Finisher',items:FIN_CARDIO},{label:'Ab Finisher',items:FIN_ABS}],
     run:{zone:2,target:25,note:'Zone 2 · full conversation pace · build 5 min/wk toward 50 min'},
     exercises:[
       {id:'sbsq',name:'Safety Bar Squat',detail:'standard = barbell back squat · SBS until overhead cleared',sets:4,rx:'6–8',rpe:8,rest:180},
@@ -831,7 +831,7 @@ const WORKOUT_DAYS={
       {id:'lgEx',name:'Leg Extension',detail:'VMO focus',sets:3,rx:'12–15',rpe:8,rest:60},
       {id:'calfSt',name:'Standing Calf Raise',detail:'full stretch at bottom',sets:4,rx:'15',rpe:8,rest:60},
     ]},
-  wed:{name:'Upper Push + Arms',type:'lift',est:370,warmup:WU_UPPER,finisher:{label:'Metcon Finisher',items:FIN_METCON},exercises:[
+  wed:{name:'Upper Push + Arms',type:'lift',est:370,warmup:WU_UPPER,finishers:[{label:'Metcon Finisher',items:FIN_METCON},{label:'Ab Finisher',items:FIN_ABS}],exercises:[
     {id:'flPr',name:'Floor DB Press',detail:'neutral grip · elbows at 45° · floor stops posterior travel',sets:4,rx:'8–12',rpe:8,rest:90,note:'⚠ Do NOT use bench — floor is the mechanical safety stop.'},
     {id:'cblPr',name:'Cable Chest Press',detail:'standing · elbows in front of shoulder throughout',sets:3,rx:'12–15',rpe:8,rest:75},
     {id:'cgFlPr',name:'Close-Grip Floor Press',detail:'elbows tucked · tricep emphasis',sets:3,rx:'10–12',rpe:8,rest:75},
@@ -839,7 +839,7 @@ const WORKOUT_DAYS={
     {id:'saPD',name:'Single-Arm Pushdown',detail:'supinated grip · medial head',sets:2,rx:'15–20',rpe:7,rest:45},
     {id:'latRaise',name:'Cable Lateral Raise',detail:'to shoulder height only · stop if any pain',sets:3,rx:'15',rpe:7,rest:60},
   ]},
-  thu:{name:'Run + Core + Carries',type:'run+core',est:470,warmup:WU_RUN,
+  thu:{name:'Run + Core + Carries',type:'run+core',est:470,warmup:WU_RUN,finishers:[{label:'Ab Finisher',items:FIN_ABS}],
     run:{zone:3,target:32,note:'Zone 3 · working but comfortable — short sentences OK'},
     exercises:[
       {id:'plank',name:'Plank',detail:'3 rounds',sets:3,rx:'60s',rpe:7,rest:30},
@@ -849,14 +849,14 @@ const WORKOUT_DAYS={
       {id:'hangLeg',name:'Hanging Leg Raise',detail:'3 rounds · no swinging',sets:3,rx:'12–15',rpe:8,rest:45},
       {id:'farmer',name:'Farmer Carry',detail:'trap bar or dual DBs · as heavy as grip allows',sets:3,rx:'40m',rpe:9,rest:90},
     ]},
-  fri:{name:'Lower — Hinge + Posterior Chain',type:'lift',est:450,warmup:WU_LOWER,finisher:{label:'Cardio Finisher',items:FIN_CARDIO},exercises:[
+  fri:{name:'Lower — Hinge + Posterior Chain',type:'lift',est:450,warmup:WU_LOWER,finishers:[{label:'Cardio Finisher',items:FIN_CARDIO},{label:'Ab Finisher',items:FIN_ABS}],exercises:[
     {id:'rdl',name:'Romanian Deadlift',detail:'hip hinge · control the eccentric',sets:4,rx:'8–10',rpe:8,rest:120},
     {id:'lgCurl',name:'Lying Leg Curl',detail:'full ROM',sets:4,rx:'10–12',rpe:8,rest:75},
     {id:'hipTh',name:'Barbell Hip Thrust',detail:'full glute extension at top',sets:4,rx:'10–12',rpe:8,rest:75},
     {id:'slRdl',name:'Single-Leg RDL',detail:'DB · stability + posterior chain',sets:3,rx:'10/leg',rpe:8,rest:75},
     {id:'calfSe',name:'Seated Calf Raise',detail:'soleus emphasis',sets:3,rx:'15–20',rpe:8,rest:60},
   ]},
-  sat:{name:'Long Easy Run',type:'run',est:490,warmup:WU_RUN,
+  sat:{name:'Long Easy Run',type:'run',est:490,warmup:WU_RUN,finishers:[{label:'Ab Finisher',items:FIN_ABS}],
     run:{zone:2,target:35,note:'Zone 2 · full conversation · Wk1: 35 min → Wk6: 60 min (build 5 min/wk)'},
     exercises:[]},
   sun:{name:'Rest & Recovery',type:'rest',est:0,warmup:[],exercises:[]}
@@ -1964,15 +1964,15 @@ function renderWorkout(){
     el.innerHTML=html;return;
   }
 
-  if(isToday&&wod.warmup&&wod.warmup.length){
-    const wuLog=workoutLog.warmup||{};
+  if(wod.warmup&&wod.warmup.length){
+    const wuLog=isToday?(workoutLog.warmup||{}):{};
     const wuDone=wod.warmup.filter((_,i)=>wuLog[i]).length;
     html+=`<div class="warmup-card">
-      <div class="warmup-hdr">Warm-Up <span class="wu-count">${wuDone}/${wod.warmup.length}</span></div>`;
+      <div class="warmup-hdr">Warm-Up${isToday?` <span class="wu-count">${wuDone}/${wod.warmup.length}</span>`:''}</div>`;
     wod.warmup.forEach((item,i)=>{
       const done=!!wuLog[i];
-      html+=`<div class="warmup-item${done?' done-wu':''}" onclick="toggleWarmup(${i})">
-        <div class="warmup-chk${done?' done':''}">${done?'✓':''}</div>
+      html+=`<div class="warmup-item${done?' done-wu':''}"${isToday?` onclick="toggleWarmup(${i})"`:''}>
+        <div class="warmup-chk${done?' done':''}" style="${isToday?'':'cursor:default;opacity:0.35'}">${done?'✓':''}</div>
         <div class="warmup-info">
           <span class="warmup-name">${item.name}</span>
           <span class="warmup-detail">${item.detail}</span>
@@ -2070,23 +2070,24 @@ function renderWorkout(){
     });
   }
 
-  if(isToday&&wod.finisher&&wod.finisher.items.length){
-    const fiLog=workoutLog.finisher||{};
-    const fiDone=wod.finisher.items.filter((_,i)=>fiLog[i]).length;
-    html+=`<div class="workout-sec-lbl" style="padding-top:14px;">${wod.finisher.label} <span style="color:#2e2e2e;font-style:italic;text-transform:none;letter-spacing:0;">(optional)</span></div>
-    <div class="finisher-card">`;
-    wod.finisher.items.forEach((item,i)=>{
-      const done=!!fiLog[i];
-      html+=`<div class="finisher-item${done?' done-fi':''}" onclick="toggleFinisher(${i})">
-        <div class="finisher-chk${done?' done':''}">${done?'✓':''}</div>
-        <div class="finisher-info">
-          <span class="finisher-name">${item.name}</span>
-          <span class="finisher-detail">${item.detail}</span>
-        </div>
-        <span class="finisher-rx">${item.rx}</span>
-      </div>`;
+  if(isToday&&wod.finishers&&wod.finishers.length){
+    wod.finishers.forEach((fin,fi)=>{
+      const fiLog=(workoutLog.finishers||{})[fi]||{};
+      html+=`<div class="workout-sec-lbl" style="padding-top:14px;">${fin.label} <span style="color:#2e2e2e;font-style:italic;text-transform:none;letter-spacing:0;">(optional)</span></div>
+      <div class="finisher-card">`;
+      fin.items.forEach((item,i)=>{
+        const done=!!fiLog[i];
+        html+=`<div class="finisher-item${done?' done-fi':''}" onclick="toggleFinisher(${fi},${i})">
+          <div class="finisher-chk${done?' done':''}">${done?'✓':''}</div>
+          <div class="finisher-info">
+            <span class="finisher-name">${item.name}</span>
+            <span class="finisher-detail">${item.detail}</span>
+          </div>
+          <span class="finisher-rx">${item.rx}</span>
+        </div>`;
+      });
+      html+=`</div>`;
     });
-    html+=`</div>`;
   }
 
   if(isToday){
@@ -2158,9 +2159,10 @@ window.addSet=(exId,e)=>{
   renderWorkout();
 };
 
-window.toggleFinisher=(idx)=>{
-  if(!workoutLog.finisher)workoutLog.finisher={};
-  workoutLog.finisher[idx]=!workoutLog.finisher[idx];
+window.toggleFinisher=(finIdx,itemIdx)=>{
+  if(!workoutLog.finishers)workoutLog.finishers={};
+  if(!workoutLog.finishers[finIdx])workoutLog.finishers[finIdx]={};
+  workoutLog.finishers[finIdx][itemIdx]=!workoutLog.finishers[finIdx][itemIdx];
   saveWorkoutLog();
   renderWorkout();
 };
