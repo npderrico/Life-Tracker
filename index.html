@@ -402,6 +402,31 @@
   .rest-timer-skip{background:none;border:none;color:var(--gold-light);font-family:var(--body);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;touch-action:manipulation;}
 
   /* ── WORKOUT PAGE: DARK MILITARY THEME ── */
+  body.wk-mode{background:#0d0d0d;}
+  body.wk-mode header{background:#0d0d0d;border-bottom-color:#c4a84a;}
+  body.wk-mode .hdr-eyebrow{color:#444;}
+  body.wk-mode .hdr-name{color:#d0c8b4;}
+  body.wk-mode .hdr-date{color:#484848;}
+  body.wk-mode .panel-lbl{color:#484848;}
+  body.wk-mode .task-txt{color:#888;}
+  body.wk-mode .task-txt.done{color:#444;}
+  body.wk-mode .task-input{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.07);color:#888;}
+  body.wk-mode .task-go{border-color:rgba(255,255,255,0.08);color:#c4a84a;}
+  body.wk-mode .golf-lbl{color:#484848;}
+  body.wk-mode .golf-event{color:#c4a84a;}
+  body.wk-mode .golf-name{color:#888;}
+  body.wk-mode .golf-score{color:#c4a84a;}
+  body.wk-mode .golf-pos,.wk-mode .golf-thru,.wk-mode .golf-status{color:#484848;}
+  body.wk-mode .golf-refresh{color:#484848;}
+  body.wk-mode .hdr-streak{color:#c4a84a;}
+  body.wk-mode .week-chart{border-top-color:rgba(255,255,255,0.06);}
+  body.wk-mode .tab-bar{background:#0d0d0d;border-top-color:#c4a84a;}
+  body.wk-mode .tab-btn.active{border-top-color:#c4a84a;}
+  body.wk-mode .tab-label{color:#383838;}
+  body.wk-mode .tab-btn.active .tab-label{color:#c4a84a;}
+  body.wk-mode .tab-icon{color:#383838;}
+  body.wk-mode .tab-btn.active .tab-icon{color:#c4a84a;}
+  body.wk-mode .rest-timer-bar{background:#0d0d0d;border-top-color:#c4a84a;}
   #view-workout{background:#0d0d0d;min-height:calc(100vh - 134px);}
   #view-workout .wday-row{background:#0d0d0d;border-bottom:1px solid #242424;}
   #view-workout .wday-btn{color:#444;}
@@ -1558,6 +1583,7 @@ window.toggleWeekChart=()=>{weekChartExpanded=!weekChartExpanded;renderWeekChart
 ══════════════════════════════════════════ */
 window.switchTab=(tab)=>{
   activeTab=tab;
+  document.body.classList.toggle('wk-mode',tab==='workout');
   document.getElementById('view-today').style.display=tab==='today'?'':'none';
   document.getElementById('view-meals').style.display=tab==='meals'?'':'none';
   document.getElementById('view-workout').style.display=tab==='workout'?'':'none';
