@@ -917,19 +917,19 @@ async function initFirebase(){
       syncBar.className='sync-bar ok';
     });
     fetchWeeklyData();
-    // Workout log listener
+    // Workout log: one-shot read to avoid onValue feedback loop overwriting in-flight saves
     const wlRef=ref(fbDb,`workoutLogs/${dateKey}`);
-    onValue(wlRef,(snap)=>{
+    wlFbRef=wlRef;
+    get(wlRef).then(snap=>{
       const fbData=snap.val();
-      if(fbData){
+      if(fbData&&Object.keys(fbData).length>0){
         workoutLog=fbData;
         localStorage.setItem('nt5-wl-'+TODAY,JSON.stringify(workoutLog));
       } else if(Object.keys(workoutLog).length>0){
         set(wlRef,workoutLog).catch(()=>{});
       }
       if(activeTab==='workout')renderWorkout();
-    });
-    wlFbRef=wlRef;
+    }).catch(()=>{});
     fetchLastWeekLog(new Date().getDay());
     // Meal preferences
     onValue(ref(fbDb,'mealPreferences'),(snap)=>{
