@@ -919,7 +919,16 @@ async function initFirebase(){
     fetchWeeklyData();
     // Workout log listener
     const wlRef=ref(fbDb,`workoutLogs/${dateKey}`);
-    onValue(wlRef,(snap)=>{workoutLog=snap.val()||{};if(activeTab==='workout')renderWorkout();});
+    onValue(wlRef,(snap)=>{
+      const fbData=snap.val();
+      if(fbData){
+        workoutLog=fbData;
+        localStorage.setItem('nt5-wl-'+TODAY,JSON.stringify(workoutLog));
+      } else if(Object.keys(workoutLog).length>0){
+        set(wlRef,workoutLog).catch(()=>{});
+      }
+      if(activeTab==='workout')renderWorkout();
+    });
     wlFbRef=wlRef;
     fetchLastWeekLog(new Date().getDay());
     // Meal preferences
