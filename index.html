@@ -2190,6 +2190,27 @@ window.completeSession=()=>{
   saveData();renderWorkout();renderActs();
 };
 
+function playRestDoneChime(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const play=()=>{
+      [[659,0],[880,0.22],[1108,0.44]].forEach(([freq,delay])=>{
+        const osc=ctx.createOscillator();
+        const gain=ctx.createGain();
+        osc.connect(gain);gain.connect(ctx.destination);
+        osc.type='sine';osc.frequency.value=freq;
+        const t=ctx.currentTime+delay;
+        gain.gain.setValueAtTime(0,t);
+        gain.gain.linearRampToValueAtTime(0.3,t+0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001,t+0.85);
+        osc.start(t);osc.stop(t+0.9);
+      });
+      setTimeout(()=>ctx.close(),2800);
+    };
+    if(ctx.state==='suspended'){ctx.resume().then(play);}else{play();}
+  }catch(e){}
+}
+
 function startRestTimer(secs){
   if(restTimerInterval)clearInterval(restTimerInterval);
   restTimerEndTime=Date.now()+secs*1000;
@@ -2206,6 +2227,7 @@ function startRestTimer(secs){
       localStorage.removeItem('nt5-rest-end');
       const b=document.getElementById('rest-timer-bar');
       if(b)b.style.display='none';
+      playRestDoneChime();
       if(navigator.vibrate)navigator.vibrate([200,100,200]);
     }else{
       restTimerSecs=remaining;
@@ -2713,6 +2735,7 @@ setInterval(fetchGolf,5*60*1000);
       localStorage.removeItem('nt5-rest-end');
       const b=document.getElementById('rest-timer-bar');
       if(b)b.style.display='none';
+      playRestDoneChime();
       if(navigator.vibrate)navigator.vibrate([200,100,200]);
     }else{restTimerSecs=rem;updateRestTimerDisplay();}
   },500);
@@ -2737,6 +2760,7 @@ document.addEventListener('visibilitychange',()=>{
         localStorage.removeItem('nt5-rest-end');
         const b=document.getElementById('rest-timer-bar');
         if(b)b.style.display='none';
+        playRestDoneChime();
         if(navigator.vibrate)navigator.vibrate([200,100,200]);
       }else{restTimerSecs=rem;updateRestTimerDisplay();}
     },500);
