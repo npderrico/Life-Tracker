@@ -400,6 +400,93 @@
   .rest-timer-lbl{font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);font-style:italic;}
   .rest-timer-val{font-family:var(--serif);font-size:22px;color:var(--cream2);line-height:1;}
   .rest-timer-skip{background:none;border:none;color:var(--gold-light);font-family:var(--body);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;touch-action:manipulation;}
+
+  /* ── WORKOUT PAGE: DARK MILITARY THEME ── */
+  #view-workout{background:#0d0d0d;min-height:calc(100vh - 134px);}
+  #view-workout .wday-row{background:#0d0d0d;border-bottom:1px solid #242424;}
+  #view-workout .wday-btn{color:#444;}
+  #view-workout .wday-btn.active{color:#c4a84a;}
+  #view-workout .wday-btn.today::after{background:#c4a84a;}
+  #view-workout .wday-btn.active.today::after{background:#c4a84a;}
+  #view-workout .wday-btn.rest:not(.active){color:#222;}
+  #view-workout .workout-hdr-row{background:#141414;border-bottom:1px solid #242424;}
+  #view-workout .workout-title{color:#d0c8b4;font-size:16px;letter-spacing:0.04em;}
+  #view-workout .workout-meta{color:#484848;}
+  #view-workout .wk-btn{border-color:#2a2a2a;color:#555;}
+  #view-workout .wk-btn:active{background:#1e1e1e;}
+  #view-workout .wk-lbl{color:#484848;}
+  #view-workout .workout-sec-lbl{color:#484848;padding-top:12px;}
+  /* Warmup */
+  #view-workout .warmup-card{background:#141414;border-color:#242424;}
+  #view-workout .warmup-hdr{color:#545454;border-bottom-color:#242424;}
+  #view-workout .wu-count{color:#c4a84a;}
+  #view-workout .warmup-item{border-bottom-color:#1e1e1e;}
+  #view-workout .warmup-item.done-wu{background:#0a0a0a;}
+  #view-workout .warmup-chk{border-color:#333;color:#444;}
+  #view-workout .warmup-chk.done{background:#3a5428;border-color:#3a5428;color:#c8d4b0;}
+  #view-workout .warmup-name{color:#b8b0a0;}
+  #view-workout .warmup-detail{color:#484848;}
+  #view-workout .warmup-rx{color:#555;}
+  /* Last-week chip */
+  #view-workout .lw-chip{color:#c4a84a;}
+  /* Run card */
+  #view-workout .run-card{background:#141414;border-color:#242424;}
+  #view-workout .run-title{color:#b8b0a0;}
+  #view-workout .run-note{color:#484848;}
+  #view-workout .run-inp{background:#1a1a1a;border-color:#2e2e2e;color:#b8b0a0;}
+  #view-workout .run-inp:focus{border-color:#4a6030;}
+  #view-workout .run-inp.logged{background:#0d0d0d;color:#555;}
+  #view-workout .run-done-btn{border-color:#333;color:#484848;}
+  #view-workout .run-done-btn.done{background:#3a5428;border-color:#3a5428;color:#c8d4b0;}
+  /* Exercise cards */
+  #view-workout .ex-card{background:#141414;border-color:#242424;}
+  #view-workout .ex-dot{background:#242424;}
+  #view-workout .ex-dot.partial{background:#c4a84a;}
+  #view-workout .ex-dot.complete{background:#3a5428;}
+  #view-workout .ex-name{color:#b8b0a0;}
+  #view-workout .ex-detail{color:#484848;}
+  #view-workout .ex-rx{color:#484848;}
+  #view-workout .ex-chev{color:#333;}
+  #view-workout .ex-body{border-top-color:#1e1e1e;}
+  #view-workout .ex-note-row{color:#8a2828;border-bottom-color:#1e1e1e;}
+  #view-workout .set-row{border-bottom-color:#1e1e1e;}
+  #view-workout .set-num{color:#383838;}
+  #view-workout .set-inp{background:#1a1a1a;border-color:#2e2e2e;color:#b8b0a0;}
+  #view-workout .set-inp:focus{border-color:#4a6030;}
+  #view-workout .set-inp.logged{background:#0d0d0d;color:#484848;}
+  #view-workout .set-sep{color:#383838;}
+  #view-workout .set-rpe-lbl{color:#383838;}
+  #view-workout .set-done-btn{border-color:#333;color:#383838;}
+  #view-workout .set-done-btn.done{background:#3a5428;border-color:#3a5428;color:#c8d4b0;}
+  #view-workout .set-add-row{background:#0d0d0d;}
+  #view-workout .set-add-btn{border-color:#242424;color:#383838;}
+  #view-workout .set-add-btn:active{border-color:#4a6030;color:#6a8a48;}
+  /* Session footer */
+  #view-workout .session-footer{background:#141414;border-color:#242424;margin-bottom:0;}
+  #view-workout .session-cal-lbl{color:#484848;}
+  #view-workout .session-cal-inp{background:#1a1a1a;border-color:#2e2e2e;color:#b8b0a0;}
+  #view-workout .session-cal-inp:focus{border-color:#4a6030;}
+  #view-workout .session-done-btn{background:#1a2e14;color:#b0c090;letter-spacing:0.18em;}
+  #view-workout .session-done-btn:active{background:#243d1c;}
+  #view-workout .session-done-btn.done-state{background:#3a5428;color:#c8d4b0;}
+  /* Rest day */
+  #view-workout .rest-day-wrap{background:#141414;border-color:#242424;}
+  #view-workout .rest-day-h{color:#b8b0a0;}
+  #view-workout .rest-day-sub{color:#484848;}
+  /* Finisher */
+  .finisher-card{border:1px solid #242424;margin:6px 14px 0;background:#141414;border-radius:0;}
+  .finisher-hdr{font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:#8a7030;font-family:var(--body);padding:7px 12px 5px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between;}
+  .finisher-badge{font-size:8px;color:#383838;font-style:italic;text-transform:none;letter-spacing:0;}
+  .finisher-item{display:flex;align-items:center;padding:7px 12px;border-bottom:1px solid #1e1e1e;gap:8px;}
+  .finisher-item:last-child{border-bottom:none;}
+  .finisher-item.done-fi{background:#0a0a0a;}
+  .finisher-chk{width:22px;height:22px;border:1.5px solid #333;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#383838;font-size:11px;touch-action:manipulation;transition:all 0.12s;}
+  .finisher-chk.done{background:#3a5428;border-color:#3a5428;color:#c8d4b0;}
+  .finisher-chk:active{opacity:0.7;}
+  .finisher-info{flex:1;min-width:0;}
+  .finisher-name{font-family:var(--body);font-size:12px;color:#b8b0a0;}
+  .finisher-detail{font-size:9px;color:#484848;font-style:italic;}
+  .finisher-rx{font-size:10px;color:#555;font-family:var(--body);white-space:nowrap;flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -655,7 +742,7 @@ let bfLog={};
 let weeklyMealPlan=null, mealPlanLoading=false, mealPrefs='';
 let workoutLog={}, workoutExpanded={}, wlFbRef=null, programWeek=1;
 let selectedWorkoutDayIdx=new Date().getDay(), workoutLogCache={}, lastWeekLogCache={};
-let restTimerInterval=null, restTimerSecs=0;
+let restTimerInterval=null, restTimerSecs=0, restTimerEndTime=0;
 const TODAY=new Date().toDateString();
 const AGE=new Date().getFullYear()-1998;
 
@@ -681,8 +768,23 @@ const WU_RUN=[
   {name:'Leg Swings',detail:'10 fwd + 10 lateral per leg',rx:'10/leg'},
   {name:'Hip Circles',detail:'loosen the hip flexors',rx:'10 each dir'},
 ];
+const FIN_ABS=[
+  {name:'Ab Wheel Rollout',detail:'full extension · control the negative',rx:'3×10'},
+  {name:'Bicycle Crunch',detail:'elbow to opposite knee · full rotation',rx:'3×20/side'},
+  {name:'Hollow Hold',detail:'lower back pressed flat · arms overhead',rx:'3×30s'},
+];
+const FIN_CARDIO=[
+  {name:'KB Swing',detail:'hip-hinge drive · 35–55 lb',rx:'4×20 · rest 45s'},
+  {name:'Jump Rope',detail:'fast turnover · minimize rest',rx:'3×60s'},
+  {name:'Medicine Ball Slam',detail:'explosive · reset between reps',rx:'3×15 · rest 45s'},
+];
+const FIN_METCON=[
+  {name:'Battle Rope Slam',detail:'alternating waves · all-out effort',rx:'3×30s · rest 30s'},
+  {name:'Burpee',detail:'full push-up at bottom · jump at top',rx:'3×10'},
+  {name:'Mountain Climber',detail:'drive the knees · keep hips level',rx:'3×30s'},
+];
 const WORKOUT_DAYS={
-  mon:{name:'Upper Pull + Arms',type:'lift',est:380,warmup:WU_UPPER,exercises:[
+  mon:{name:'Upper Pull + Arms',type:'lift',est:380,warmup:WU_UPPER,finisher:{label:'Core Finisher',items:FIN_ABS},exercises:[
     {id:'latPD',name:'Lat Pulldown',detail:'neutral grip · to chest',sets:4,rx:'8–10',rpe:8,rest:90},
     {id:'cRow',name:'Seated Cable Row',detail:'V-bar · full scap retraction',sets:4,rx:'10–12',rpe:8,rest:90},
     {id:'csRow',name:'Chest-Supported DB Row',detail:'elbows at 45°',sets:3,rx:'12–15',rpe:8,rest:75},
@@ -690,16 +792,16 @@ const WORKOUT_DAYS={
     {id:'incCurl',name:'Incline DB Curl',detail:'long head stretch',sets:3,rx:'10–12',rpe:8,rest:60},
     {id:'hamCurl',name:'Hammer Curl',detail:'alternating',sets:3,rx:'12/arm',rpe:8,rest:60},
   ]},
-  tue:{name:'Lower — Squat + Easy Run',type:'lift+run',est:560,warmup:WU_LOWER,
+  tue:{name:'Lower — Squat + Easy Run',type:'lift+run',est:560,warmup:WU_LOWER,finisher:{label:'Cardio Finisher',items:FIN_CARDIO},
     run:{zone:2,target:25,note:'Zone 2 · full conversation pace · build 5 min/wk toward 50 min'},
     exercises:[
       {id:'sbsq',name:'Safety Bar Squat',detail:'standard = barbell back squat · SBS until overhead cleared',sets:4,rx:'6–8',rpe:8,rest:180},
-      {id:'lgPr',name:'Leg Press',detail:'feet shoulder-width · full ROM',sets:3,rx:'10–12',rpe:8,rest:90},
+      {id:'dbStepUp',name:'DB Step-Up',detail:'16–20 in box · DBs in each hand · controlled step down',sets:3,rx:'10–12/leg',rpe:8,rest:90},
       {id:'bss',name:'Bulgarian Split Squat',detail:'rear foot elevated · DBs in each hand',sets:3,rx:'10–12/leg',rpe:8,rest:90},
       {id:'lgEx',name:'Leg Extension',detail:'VMO focus',sets:3,rx:'12–15',rpe:8,rest:60},
       {id:'calfSt',name:'Standing Calf Raise',detail:'full stretch at bottom',sets:4,rx:'15',rpe:8,rest:60},
     ]},
-  wed:{name:'Upper Push + Arms',type:'lift',est:370,warmup:WU_UPPER,exercises:[
+  wed:{name:'Upper Push + Arms',type:'lift',est:370,warmup:WU_UPPER,finisher:{label:'Metcon Finisher',items:FIN_METCON},exercises:[
     {id:'flPr',name:'Floor DB Press',detail:'neutral grip · elbows at 45° · floor stops posterior travel',sets:4,rx:'8–12',rpe:8,rest:90,note:'⚠ Do NOT use bench — floor is the mechanical safety stop.'},
     {id:'cblPr',name:'Cable Chest Press',detail:'standing · elbows in front of shoulder throughout',sets:3,rx:'12–15',rpe:8,rest:75},
     {id:'cgFlPr',name:'Close-Grip Floor Press',detail:'elbows tucked · tricep emphasis',sets:3,rx:'10–12',rpe:8,rest:75},
@@ -717,7 +819,7 @@ const WORKOUT_DAYS={
       {id:'hangLeg',name:'Hanging Leg Raise',detail:'3 rounds · no swinging',sets:3,rx:'12–15',rpe:8,rest:45},
       {id:'farmer',name:'Farmer Carry',detail:'trap bar or dual DBs · as heavy as grip allows',sets:3,rx:'40m',rpe:9,rest:90},
     ]},
-  fri:{name:'Lower — Hinge + Posterior Chain',type:'lift',est:450,warmup:WU_LOWER,exercises:[
+  fri:{name:'Lower — Hinge + Posterior Chain',type:'lift',est:450,warmup:WU_LOWER,finisher:{label:'Cardio Finisher',items:FIN_CARDIO},exercises:[
     {id:'rdl',name:'Romanian Deadlift',detail:'hip hinge · control the eccentric',sets:4,rx:'8–10',rpe:8,rest:120},
     {id:'lgCurl',name:'Lying Leg Curl',detail:'full ROM',sets:4,rx:'10–12',rpe:8,rest:75},
     {id:'hipTh',name:'Barbell Hip Thrust',detail:'full glute extension at top',sets:4,rx:'10–12',rpe:8,rest:75},
@@ -1938,6 +2040,25 @@ function renderWorkout(){
     });
   }
 
+  if(isToday&&wod.finisher&&wod.finisher.items.length){
+    const fiLog=workoutLog.finisher||{};
+    const fiDone=wod.finisher.items.filter((_,i)=>fiLog[i]).length;
+    html+=`<div class="workout-sec-lbl" style="color:#6e5a20;padding-top:14px;">${wod.finisher.label} <span style="color:#383838;font-style:italic;text-transform:none;letter-spacing:0;">(optional)</span></div>
+    <div class="finisher-card">`;
+    wod.finisher.items.forEach((item,i)=>{
+      const done=!!fiLog[i];
+      html+=`<div class="finisher-item${done?' done-fi':''}" onclick="toggleFinisher(${i})">
+        <div class="finisher-chk${done?' done':''}">${done?'✓':''}</div>
+        <div class="finisher-info">
+          <span class="finisher-name">${item.name}</span>
+          <span class="finisher-detail">${item.detail}</span>
+        </div>
+        <span class="finisher-rx">${item.rx}</span>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
   if(isToday){
     const sessCalVal=workoutLog.calories||wod.est;
     html+=`<div class="session-footer">
@@ -2007,6 +2128,13 @@ window.addSet=(exId,e)=>{
   renderWorkout();
 };
 
+window.toggleFinisher=(idx)=>{
+  if(!workoutLog.finisher)workoutLog.finisher={};
+  workoutLog.finisher[idx]=!workoutLog.finisher[idx];
+  saveWorkoutLog();
+  renderWorkout();
+};
+
 window.toggleRun=()=>{
   const dur=parseInt(document.getElementById('run-dur-inp')?.value)||undefined;
   const dist=parseFloat(document.getElementById('run-dist-inp')?.value)||undefined;
@@ -2037,19 +2165,26 @@ window.completeSession=()=>{
 
 function startRestTimer(secs){
   if(restTimerInterval)clearInterval(restTimerInterval);
+  restTimerEndTime=Date.now()+secs*1000;
+  localStorage.setItem('nt5-rest-end',String(restTimerEndTime));
   restTimerSecs=secs;
   const bar=document.getElementById('rest-timer-bar');
   if(bar)bar.style.display='flex';
   updateRestTimerDisplay();
   restTimerInterval=setInterval(()=>{
-    restTimerSecs--;
-    if(restTimerSecs<=0){
+    const remaining=Math.ceil((restTimerEndTime-Date.now())/1000);
+    if(remaining<=0){
       clearInterval(restTimerInterval);restTimerInterval=null;
-      const bar=document.getElementById('rest-timer-bar');
-      if(bar)bar.style.display='none';
+      restTimerEndTime=0;
+      localStorage.removeItem('nt5-rest-end');
+      const b=document.getElementById('rest-timer-bar');
+      if(b)b.style.display='none';
       if(navigator.vibrate)navigator.vibrate([200,100,200]);
-    }else{updateRestTimerDisplay();}
-  },1000);
+    }else{
+      restTimerSecs=remaining;
+      updateRestTimerDisplay();
+    }
+  },500);
 }
 
 function updateRestTimerDisplay(){
@@ -2063,6 +2198,8 @@ function updateRestTimerDisplay(){
 window.skipRestTimer=()=>{
   if(restTimerInterval)clearInterval(restTimerInterval);
   restTimerInterval=null;
+  restTimerEndTime=0;
+  localStorage.removeItem('nt5-rest-end');
   const bar=document.getElementById('rest-timer-bar');
   if(bar)bar.style.display='none';
 };
@@ -2529,6 +2666,55 @@ setInterval(renderDate,60000);
 initFirebase();
 fetchGolf();
 setInterval(fetchGolf,5*60*1000);
+
+// Resume rest timer if page reloaded or came back from background
+(function resumeStoredRestTimer(){
+  const stored=parseInt(localStorage.getItem('nt5-rest-end')||'0');
+  if(!stored)return;
+  const remaining=Math.ceil((stored-Date.now())/1000);
+  if(remaining<=0){localStorage.removeItem('nt5-rest-end');return;}
+  restTimerEndTime=stored;
+  restTimerSecs=remaining;
+  const bar=document.getElementById('rest-timer-bar');
+  if(bar)bar.style.display='flex';
+  updateRestTimerDisplay();
+  restTimerInterval=setInterval(()=>{
+    const rem=Math.ceil((restTimerEndTime-Date.now())/1000);
+    if(rem<=0){
+      clearInterval(restTimerInterval);restTimerInterval=null;
+      restTimerEndTime=0;
+      localStorage.removeItem('nt5-rest-end');
+      const b=document.getElementById('rest-timer-bar');
+      if(b)b.style.display='none';
+      if(navigator.vibrate)navigator.vibrate([200,100,200]);
+    }else{restTimerSecs=rem;updateRestTimerDisplay();}
+  },500);
+})();
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  const stored=parseInt(localStorage.getItem('nt5-rest-end')||'0');
+  if(!stored)return;
+  const remaining=Math.ceil((stored-Date.now())/1000);
+  if(remaining<=0){localStorage.removeItem('nt5-rest-end');const b=document.getElementById('rest-timer-bar');if(b)b.style.display='none';return;}
+  // Resync display in case interval was throttled
+  restTimerEndTime=stored;
+  restTimerSecs=remaining;
+  updateRestTimerDisplay();
+  if(!restTimerInterval){
+    restTimerInterval=setInterval(()=>{
+      const rem=Math.ceil((restTimerEndTime-Date.now())/1000);
+      if(rem<=0){
+        clearInterval(restTimerInterval);restTimerInterval=null;
+        restTimerEndTime=0;
+        localStorage.removeItem('nt5-rest-end');
+        const b=document.getElementById('rest-timer-bar');
+        if(b)b.style.display='none';
+        if(navigator.vibrate)navigator.vibrate([200,100,200]);
+      }else{restTimerSecs=rem;updateRestTimerDisplay();}
+    },500);
+  }
+});
 </script>
 </body>
 </html>
