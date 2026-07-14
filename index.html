@@ -403,7 +403,11 @@
 
   /* ── WORKOUT PAGE: 1ST MARINE RAIDER BATTALION THEME ──
      Palette: black bg · crimson #8c1a1a · navy #0e1428 · off-white #d8d0c8 */
-  body.wk-mode{background:#0d0d0d;}
+  body.wk-mode{background:#0d0d0d;
+    --muted:#404040;--muted2:#3a3a3a;
+    --gold:#6e1212;--gold-light:#c03030;
+    --green:#111;--green2:#1a1a1a;--green3:#2a2a2a;
+    --accent:#c03030;}
   body.wk-mode header{background:#0d0d0d;border-bottom-color:#8c1a1a;}
   body.wk-mode .hdr-eyebrow{color:#3a3a3a;}
   body.wk-mode .hdr-name{color:#d8d0c8;}
@@ -1986,7 +1990,6 @@ function renderWorkout(){
     html+=`<div class="workout-sec-lbl run-lbl">Run</div>
     <div class="run-card">
       <div class="run-row">
-        <span class="run-icon">🏃</span>
         <div class="run-info">
           <div class="run-title">Zone ${wod.run.zone} · ${target} min target</div>
           <div class="run-note">${wod.run.note}</div>
@@ -2070,7 +2073,7 @@ function renderWorkout(){
   if(isToday&&wod.finisher&&wod.finisher.items.length){
     const fiLog=workoutLog.finisher||{};
     const fiDone=wod.finisher.items.filter((_,i)=>fiLog[i]).length;
-    html+=`<div class="workout-sec-lbl" style="color:#6e5a20;padding-top:14px;">${wod.finisher.label} <span style="color:#383838;font-style:italic;text-transform:none;letter-spacing:0;">(optional)</span></div>
+    html+=`<div class="workout-sec-lbl" style="padding-top:14px;">${wod.finisher.label} <span style="color:#2e2e2e;font-style:italic;text-transform:none;letter-spacing:0;">(optional)</span></div>
     <div class="finisher-card">`;
     wod.finisher.items.forEach((item,i)=>{
       const done=!!fiLog[i];
