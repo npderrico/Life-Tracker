@@ -366,6 +366,7 @@
   .mp-snack-desc{font-size:9px;color:var(--muted);font-family:var(--body);line-height:1.35;margin-bottom:2px;font-style:italic;}
   .mp-snack-meta{font-size:9px;color:var(--muted2);font-family:var(--body);}
   .mp-snack-add-btn{background:none;border:none;font-size:9px;color:var(--green2);cursor:pointer;touch-action:manipulation;font-family:var(--body);text-decoration:underline;text-underline-offset:2px;padding:3px 0 0;text-align:left;opacity:0.85;}
+  .mp-snack-recipe-btn{background:none;border:none;font-family:var(--body);font-size:9px;color:var(--muted2);cursor:pointer;touch-action:manipulation;padding:3px 0 1px;letter-spacing:0.06em;text-transform:uppercase;text-align:left;}
   .mp-add-lib-btn{background:none;border:none;font-family:var(--body);font-size:10px;color:var(--green2);cursor:pointer;touch-action:manipulation;padding:5px 0 0;text-decoration:underline;text-underline-offset:2px;display:block;opacity:0.85;}
   .grocery-toggle-row{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding-right:18px;user-select:none;}
   .grocery-list{background:var(--cream2);}
@@ -2471,7 +2472,7 @@ window.generateWeeklyPlan=async()=>{
   const el=document.getElementById('meal-plan-content');
   if(el)el.innerHTML='<div class="mp-loading">Crafting your meal plan…</div>';
   const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
-  const sys=buildMealSysPrompt(intakeCal)+'\n\nRespond with ONLY valid JSON, no markdown. Include a "recipe" field for lunch and dinner: an array of 5–8 specific step strings covering the full cook procedure with quantities.\n{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]},"snacks":[{"name":"","description":"","cal":0,"protein":0,"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"groceries":[]}]}';
+  const sys=buildMealSysPrompt(intakeCal)+'\n\nRespond with ONLY valid JSON, no markdown.\n- Lunch and dinner: always include "recipe" (5–8 step strings with quantities).\n- Snacks: include "recipe" (3–5 steps) ONLY if the snack requires actual preparation — e.g., protein balls, overnight oats, homemade bars, energy bites. Leave "recipe" as an empty array [] for obvious grab-and-go items like Greek yogurt, jerky, string cheese, hard-boiled eggs.\n{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]},"snacks":[{"name":"","description":"","cal":0,"protein":0,"recipe":[],"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"recipe":[],"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"recipe":[],"groceries":[]}]}';
   try{
     const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content:'Generate a varied high-protein meal plan for this week.'}]})});
     const data=await res.json();
@@ -2492,8 +2493,9 @@ window.regenSingleMeal=async(type,idx)=>{
   const cardEl=document.getElementById(cardId);
   if(cardEl)cardEl.innerHTML='<div style="padding:14px;text-align:center;font-family:var(--body);font-size:11px;color:var(--muted);font-style:italic">Regenerating…</div>';
   const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
-  const schema=isSnack?'{"snack":{"name":"","description":"","cal":0,"protein":0,"groceries":[]}}':type==='lunch'?'{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]}}':'{"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]}}';
-  const ctx=`Current plan — Lunch: "${weeklyMealPlan.lunch?.name}", Dinner: "${weeklyMealPlan.dinner?.name}", Snacks: "${(weeklyMealPlan.snacks||[]).map(s=>s.name).join(', ')}". Replace "${current?.name}" with something DIFFERENT. Include a "recipe" array of 5–8 specific steps with quantities. Respond ONLY with valid JSON: ${schema}`;
+  const schema=isSnack?'{"snack":{"name":"","description":"","cal":0,"protein":0,"recipe":[],"groceries":[]}}':type==='lunch'?'{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]}}':'{"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]}}';
+  const recipeNote=isSnack?'Include "recipe" (3–5 steps) only if the snack requires actual prep (protein balls, overnight oats, homemade items). Leave "recipe":[] for grab-and-go items.':'Include a "recipe" array of 5–8 specific steps with quantities.';
+  const ctx=`Current plan — Lunch: "${weeklyMealPlan.lunch?.name}", Dinner: "${weeklyMealPlan.dinner?.name}", Snacks: "${(weeklyMealPlan.snacks||[]).map(s=>s.name).join(', ')}". Replace "${current?.name}" with something DIFFERENT. ${recipeNote} Respond ONLY with valid JSON: ${schema}`;
   const sys=buildMealSysPrompt(intakeCal)+'\n\n'+ctx;
   try{
     const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content:`Give me a different ${isSnack?'snack':type} — not "${current?.name}".`}]})});
@@ -2515,16 +2517,25 @@ function renderMealPlan(plan){
   tag(plan.lunch?.groceries,'Lunch');tag(plan.dinner?.groceries,'Dinner');
   (plan.snacks||[]).forEach(s=>tag(s.groceries,'Snacks'));
   const groceryRows=Object.values(groceries).sort((a,b)=>a.name.localeCompare(b.name)).map(g=>`<div class="grocery-item"><span class="grocery-item-name">${g.name}</span><span class="grocery-item-tag">${g.tags.join(' · ')}</span></div>`).join('');
-  const snackCards=(plan.snacks||[]).map((s,i)=>`
-    <div class="mp-snack-card" id="mp-snack-${i}">
+  const snackCards=(plan.snacks||[]).map((s,i)=>{
+    const hasRecipe=s.recipe&&s.recipe.length>0;
+    const recipeHtml=hasRecipe?`
+      <button class="mp-snack-recipe-btn" onclick="toggleRecipe('snack-${i}')">Recipe <span id="recipe-chev-snack-${i}">▾</span></button>
+      <div class="mp-recipe-body" id="recipe-body-snack-${i}" style="display:none">
+        ${s.recipe.map((step,ri)=>`<div class="mp-recipe-step"><span class="mp-recipe-step-num">${ri+1}.</span>${step}</div>`).join('')}
+        ${s.groceries?.length?`<div class="mp-recipe-groceries"><div class="mp-recipe-grocery-lbl">Groceries</div>${s.groceries.map(g=>`<div class="mp-recipe-grocery-item">· ${g}</div>`).join('')}</div>`:''}
+      </div>`:'';
+    return`<div class="mp-snack-card" id="mp-snack-${i}">
       <div class="mp-snack-hdr">
         <span class="mp-snack-name">${s.name}</span>
         <button class="mp-item-regen" onclick="regenSingleMeal('snack',${i})" title="Swap snack">↻</button>
       </div>
       ${s.description?`<div class="mp-snack-desc">${s.description}</div>`:''}
       <div class="mp-snack-meta">${s.cal} cal · ${s.protein}g pro</div>
+      ${recipeHtml}
       <button class="mp-snack-add-btn" onclick="addMealToLibrary('snack',${i})">+ library</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   const totalCal=(plan.lunch?.cal||0)+(plan.dinner?.cal||0);
   el.innerHTML=`
     ${buildPrefsBarHtml()}
