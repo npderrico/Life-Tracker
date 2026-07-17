@@ -405,6 +405,8 @@
   .mp-arch-step-num{font-family:var(--serif);font-size:10px;color:var(--muted2);flex-shrink:0;min-width:14px;padding-top:2px;}
   .mp-arch-grocery{font-size:12px;font-family:var(--body);color:var(--muted);padding:2px 0;}
   .mp-archive-empty{padding:16px 14px;font-size:12px;color:var(--muted2);font-family:var(--body);font-style:italic;text-align:center;}
+  .mp-arch-use-btn{display:block;width:100%;background:var(--green);color:var(--cream2);border:none;font-family:var(--body);font-size:11px;padding:9px 12px;margin-top:10px;cursor:pointer;touch-action:manipulation;text-align:center;letter-spacing:0.05em;text-transform:uppercase;}
+  .mp-arch-use-btn:active{opacity:0.7;}
   /* PROGRESS TAB */
   .prog-wrap{padding:4px 0 24px;}
   .prog-section{margin:0 0 18px;}
@@ -798,7 +800,7 @@ let weight=205, calorieTarget=500;
 let currentDeficit=0, weeklyData={}, weightData={};
 let weekChartExpanded=false, weighInChecked=false;
 let bfLog={};
-let weeklyMealPlan=null, mealPlanLoading=false, mealPrefs='', mealHistory={};
+let weeklyMealPlan=null, mealPlanLoading=false, mealPrefs='', mealHistory={}, mealArchivedMeals={}, mealArchiveIndex=[];
 let workoutLog={}, workoutExpanded={}, wlFbRef=null, programWeek=1;
 let selectedWorkoutDayIdx=new Date().getDay(), workoutLogCache={}, lastWeekLogCache={};
 let restTimerInterval=null, restTimerSecs=0, restTimerEndTime=0;
@@ -2577,13 +2579,24 @@ window.addMealToLibrary=(type,idx)=>{
   if(!item)return;
   const {name,cal,protein,description}=item;
   const desc=description||'';
+  // Save to calorie library
   if(fbPushFn&&fbDb&&fbRefFn){
     fbPushFn(fbRefFn(fbDb,'savedMeals'),{name,cal,protein:protein||0,desc});
   } else {
     savedMeals.push({id:'sm'+Date.now(),name,cal,protein:protein||0,desc});
     renderMealsLib();
   }
-  showMpToast(`"${name}" added to library`);
+  // For lunch/dinner: also save full data (recipe, groceries) to archive
+  if(type==='lunch'||type==='dinner'){
+    const entry={...item,mealType:type,savedAt:Date.now()};
+    const tempId='am'+entry.savedAt;
+    mealArchivedMeals[tempId]=entry;
+    if(fbPushFn&&fbDb&&fbRefFn){
+      fbPushFn(fbRefFn(fbDb,'mealPlan/archivedMeals'),entry);
+    }
+    renderMealHistory();
+  }
+  showMpToast(`"${name}" saved to library`);
 };
 
 function showMpToast(msg){
@@ -2643,11 +2656,14 @@ function formatWeekKey(wk){
 async function fetchMealHistory(){
   const el=document.getElementById('meal-archive-content');
   if(!el)return;
-  if(Object.keys(mealHistory).length){renderMealHistory();return;}
   if(!fbDb||!fbRefFn||!fbGetFn)return;
   try{
-    const snap=await fbGetFn(fbRefFn(fbDb,'mealPlan/history'));
-    mealHistory=snap.val()||{};
+    const [histSnap,archSnap]=await Promise.all([
+      fbGetFn(fbRefFn(fbDb,'mealPlan/history')),
+      fbGetFn(fbRefFn(fbDb,'mealPlan/archivedMeals')),
+    ]);
+    mealHistory=histSnap.val()||{};
+    mealArchivedMeals=archSnap.val()||{};
     renderMealHistory();
   }catch(e){}
 }
@@ -2655,53 +2671,70 @@ async function fetchMealHistory(){
 function renderMealHistory(){
   const el=document.getElementById('meal-archive-content');
   if(!el)return;
-  const weeks=Object.entries(mealHistory).sort((a,b)=>b[0].localeCompare(a[0]));
-  if(!weeks.length){el.innerHTML='';return;}
-  const lunches=weeks.filter(([,p])=>p.lunch?.name);
-  const dinners=weeks.filter(([,p])=>p.dinner?.name);
-  const archiveCard=(wk,meal,type,idx)=>{
+  mealArchiveIndex=[];
+  // Build flat sorted lists from both sources
+  const allLunches=[], allDinners=[];
+  // Week-plan archives
+  Object.entries(mealHistory).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([wk,plan])=>{
+    if(plan.lunch?.name)allLunches.push({label:formatWeekKey(wk),meal:plan.lunch});
+    if(plan.dinner?.name)allDinners.push({label:formatWeekKey(wk),meal:plan.dinner});
+  });
+  // Individually saved meals (newest first)
+  Object.values(mealArchivedMeals).sort((a,b)=>(b.savedAt||0)-(a.savedAt||0)).forEach(entry=>{
+    const d=new Date(entry.savedAt||Date.now());
+    const label='Saved '+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    if(entry.mealType==='lunch')allLunches.unshift({label,meal:entry});
+    if(entry.mealType==='dinner')allDinners.unshift({label,meal:entry});
+  });
+  if(!allLunches.length&&!allDinners.length){el.innerHTML='';return;}
+  const archiveCard=(entry,type)=>{
+    const idx=mealArchiveIndex.length;
+    mealArchiveIndex.push({type,meal:entry.meal});
     const id=`arch-${type}-${idx}`;
+    const {meal,label}=entry;
     const steps=(meal.recipe||[]).map((s,i)=>`<div class="mp-arch-step"><span class="mp-arch-step-num">${i+1}.</span>${s}</div>`).join('');
     const groc=(meal.groceries||[]).map(g=>`<div class="mp-arch-grocery">· ${g}</div>`).join('');
     return`<div class="mp-arch-card">
       <div class="mp-arch-card-hdr" onclick="toggleArchiveCard('${id}')">
         <div>
           <div class="mp-arch-meal-name">${meal.name}</div>
-          <div class="mp-arch-meta">${formatWeekKey(wk)} · ${meal.cal||0} cal · ${meal.protein||0}g pro</div>
+          <div class="mp-arch-meta">${label} · ${meal.cal||0} cal · ${meal.protein||0}g pro</div>
         </div>
         <span class="mp-arch-chev" id="${id}-chev">▾</span>
       </div>
       <div class="mp-arch-card-body" id="${id}-body">
-        <div class="mp-arch-desc">${meal.description||''}</div>
+        ${meal.description?`<div class="mp-arch-desc">${meal.description}</div>`:''}
         ${meal.prepNote?`<div class="mp-prep-note" style="margin:4px 0">${meal.prepNote}</div>`:''}
         ${steps?`<div class="mp-arch-section-lbl">Recipe</div>${steps}`:''}
         ${groc?`<div class="mp-arch-section-lbl">Groceries</div>${groc}`:''}
+        <button class="mp-arch-use-btn" onclick="useArchivedMeal(${idx})">↑ Use as this week's ${type}</button>
       </div>
     </div>`;
   };
   el.innerHTML=`<div class="mp-archive">
-    <div class="mp-archive-hdr" onclick="toggleArchiveSection('lunches')">
-      <div class="mp-archive-hdr-left">
-        <span class="mp-archive-title">Past Lunches</span>
-        <span class="mp-archive-count">${lunches.length}</span>
-      </div>
+    ${allLunches.length?`<div class="mp-archive-hdr" onclick="toggleArchiveSection('lunches')">
+      <div class="mp-archive-hdr-left"><span class="mp-archive-title">Past Lunches</span><span class="mp-archive-count">${allLunches.length}</span></div>
       <span class="mp-archive-chev" id="arch-chev-lunches">▾</span>
     </div>
-    <div class="mp-archive-body" id="arch-body-lunches">
-      ${lunches.length?lunches.map(([wk,p],i)=>archiveCard(wk,p.lunch,'lunch',i)).join(''):'<div class="mp-archive-empty">No lunches archived yet</div>'}
-    </div>
-    <div class="mp-archive-hdr" onclick="toggleArchiveSection('dinners')">
-      <div class="mp-archive-hdr-left">
-        <span class="mp-archive-title">Past Dinners</span>
-        <span class="mp-archive-count">${dinners.length}</span>
-      </div>
+    <div class="mp-archive-body" id="arch-body-lunches">${allLunches.map(e=>archiveCard(e,'lunch')).join('')}</div>`:''}
+    ${allDinners.length?`<div class="mp-archive-hdr" onclick="toggleArchiveSection('dinners')">
+      <div class="mp-archive-hdr-left"><span class="mp-archive-title">Past Dinners</span><span class="mp-archive-count">${allDinners.length}</span></div>
       <span class="mp-archive-chev" id="arch-chev-dinners">▾</span>
     </div>
-    <div class="mp-archive-body" id="arch-body-dinners">
-      ${dinners.length?dinners.map(([wk,p],i)=>archiveCard(wk,p.dinner,'dinner',i)).join(''):'<div class="mp-archive-empty">No dinners archived yet</div>'}
-    </div>
+    <div class="mp-archive-body" id="arch-body-dinners">${allDinners.map(e=>archiveCard(e,'dinner')).join('')}</div>`:''}
   </div>`;
 }
+
+window.useArchivedMeal=(idx)=>{
+  const entry=mealArchiveIndex[idx];
+  if(!entry)return;
+  if(!weeklyMealPlan)weeklyMealPlan={};
+  weeklyMealPlan[entry.type]=entry.meal;
+  savePlanToFirebase();
+  renderMealPlan(weeklyMealPlan);
+  document.getElementById('meal-plan-content')?.scrollIntoView({behavior:'smooth'});
+  showMpToast(`"${entry.meal.name}" set as this week's ${entry.type}`);
+};
 
 window.toggleArchiveSection=(id)=>{
   const body=document.getElementById(`arch-body-${id}`);
