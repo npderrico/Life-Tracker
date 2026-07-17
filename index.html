@@ -802,17 +802,58 @@ const FIN_ABS=[
   {name:'Ab Wheel Rollout',detail:'full extension · control the negative',rx:'3×10'},
   {name:'Bicycle Crunch',detail:'elbow to opposite knee · full rotation',rx:'3×20/side'},
   {name:'Hollow Hold',detail:'lower back pressed flat · arms overhead',rx:'3×30s'},
+  {name:'Hanging Knee Raise',detail:'dead hang start · no swinging',rx:'3×15'},
+  {name:'Russian Twist',detail:'KB or plate · rotate fully each side',rx:'3×20'},
+  {name:'Cable Crunch',detail:'rope attachment · crunch to hips',rx:'3×12'},
+  {name:'Plank Shoulder Tap',detail:'hips square · minimize rotation',rx:'3×30s'},
+  {name:'Dead Bug',detail:'lower back stays flat · extend opposite limbs',rx:'3×10/side'},
+  {name:'Leg Raise',detail:'lying · lower back pressed down throughout',rx:'3×15'},
+  {name:'V-Up',detail:'arms and legs meet at top · control descent',rx:'3×15'},
+  {name:'Side Plank',detail:'hips stacked · full body tension',rx:'3×30s/side'},
+  {name:'Pallof Press',detail:'cable at chest height · resist rotation',rx:'3×10/side'},
+  {name:'Weighted Sit-Up',detail:'plate on chest · full ROM',rx:'3×15'},
+  {name:'Toes-to-Bar',detail:'controlled kip · compress at top',rx:'3×10'},
+  {name:'McGill Curl-Up',detail:'one knee bent · hands under lumbar · tiny range',rx:'3×10'},
 ];
 const FIN_CARDIO=[
   {name:'KB Swing',detail:'hip-hinge drive · 35–55 lb',rx:'4×20 · rest 45s'},
   {name:'Jump Rope',detail:'fast turnover · minimize rest',rx:'3×60s'},
   {name:'Medicine Ball Slam',detail:'explosive · reset between reps',rx:'3×15 · rest 45s'},
+  {name:'Box Jump',detail:'full hip extension at top · step down',rx:'4×8 · rest 45s'},
+  {name:'Rowing Sprint',detail:'all-out effort · damper 6–8',rx:'3×250m · rest 90s'},
+  {name:'Assault Bike Sprint',detail:'max RPM · all limbs',rx:'3×30s · rest 90s'},
+  {name:'Jump Squat',detail:'bodyweight · land soft',rx:'3×15 · rest 45s'},
+  {name:'KB Goblet Squat',detail:'35–55 lb · tempo 3-0-1',rx:'3×15 · rest 45s'},
+  {name:'Skater Hop',detail:'lateral bound · stick the landing',rx:'3×15/side · rest 45s'},
+  {name:'DB Thruster',detail:'squat to press · fluid transition',rx:'3×12 · rest 60s'},
+  {name:'Broad Jump',detail:'max distance · absorb landing · reset',rx:'4×6 · rest 45s'},
+  {name:'Sprint Interval',detail:'treadmill 10+ mph or outdoor all-out',rx:'4×30s · rest 60s'},
+  {name:'Bear Crawl',detail:'hips level · opposite hand-foot',rx:'3×20m · rest 30s'},
+  {name:'Step-Up Blitz',detail:'knee drive at top · fast tempo',rx:'3×20/leg · rest 45s'},
+  {name:'Plyo Push-Up',detail:'explosive off floor · land soft',rx:'3×8 · rest 60s'},
 ];
 const FIN_METCON=[
   {name:'Battle Rope Slam',detail:'alternating waves · all-out effort',rx:'3×30s · rest 30s'},
   {name:'Burpee',detail:'full push-up at bottom · jump at top',rx:'3×10'},
   {name:'Mountain Climber',detail:'drive the knees · keep hips level',rx:'3×30s'},
+  {name:'KB Clean & Press',detail:'hip drive into press · lockout overhead',rx:'3×8/side · rest 60s'},
+  {name:'Wall Ball',detail:'20 lb · full squat · hit the target',rx:'3×15 · rest 45s'},
+  {name:'Devil Press',detail:'DB burpee into snatch · all-out',rx:'3×8 · rest 60s'},
+  {name:'DB Snatch',detail:'hip snap · lockout overhead',rx:'3×8/side · rest 60s'},
+  {name:'Push Press',detail:'leg drive into strict lockout',rx:'3×12 · rest 60s'},
+  {name:'Slam Ball',detail:'overhead to floor · no bouncing',rx:'3×12 · rest 45s'},
+  {name:'Turkish Get-Up',detail:'slow and controlled · lock wrist throughout',rx:'2×3/side · rest 90s'},
+  {name:'KB Figure-8',detail:'between legs alternating hand pass',rx:'3×10/side · rest 30s'},
+  {name:'Barbell Complex',detail:'RDL → row → clean → front squat → press · no rack',rx:'2×6 · rest 2 min'},
+  {name:'Double-Under',detail:'jump rope · wrists do the work',rx:'3×30 · rest 30s'},
+  {name:'Sandbag Carry',detail:'bear hug or shouldered · max effort',rx:'3×30m · rest 60s'},
+  {name:'KB Around the World',detail:'controlled circles · reverse direction each set',rx:'3×10/dir · rest 30s'},
 ];
+// Picks 3 finisher items rotated by day-of-week + program week so consecutive days differ
+function getFinisherItems(pool,dayIdx,weekNum,finSlot){
+  const offset=(dayIdx*4+(weekNum-1)*5+finSlot*7)%pool.length;
+  return[0,1,2].map(i=>pool[(offset+i)%pool.length]);
+}
 const WORKOUT_DAYS={
   mon:{name:'Upper Pull + Arms',type:'lift',est:380,warmup:WU_UPPER,finishers:[{label:'Cardio Finisher',items:FIN_CARDIO},{label:'Ab Finisher',items:FIN_ABS}],exercises:[
     {id:'latPD',name:'Lat Pulldown',detail:'neutral grip · to chest',sets:4,rx:'8–10',rpe:8,rest:90},
@@ -851,8 +892,8 @@ const WORKOUT_DAYS={
     ]},
   fri:{name:'Lower — Hinge + Posterior Chain',type:'lift',est:450,warmup:WU_LOWER,finishers:[{label:'Cardio Finisher',items:FIN_CARDIO},{label:'Ab Finisher',items:FIN_ABS}],exercises:[
     {id:'rdl',name:'Romanian Deadlift',detail:'hip hinge · control the eccentric',sets:4,rx:'8–10',rpe:8,rest:120},
-    {id:'lgCurl',name:'Lying Leg Curl',detail:'full ROM',sets:4,rx:'10–12',rpe:8,rest:75},
-    {id:'hipTh',name:'Barbell Hip Thrust',detail:'full glute extension at top',sets:4,rx:'10–12',rpe:8,rest:75},
+    {id:'kbSwing',name:'KB Swing',detail:'explosive hip snap · 53–70 lb · hike back, drive hips through',sets:4,rx:'15',rpe:8,rest:60},
+    {id:'goodMorn',name:'Good Morning',detail:'barbell on traps · hinge to parallel · keep spine neutral',sets:3,rx:'10',rpe:7,rest:90},
     {id:'slRdl',name:'Single-Leg RDL',detail:'DB · stability + posterior chain',sets:3,rx:'10/leg',rpe:8,rest:75},
     {id:'calfSe',name:'Seated Calf Raise',detail:'soleus emphasis',sets:3,rx:'15–20',rpe:8,rest:60},
   ]},
@@ -1995,7 +2036,7 @@ function renderWorkout(){
   if(wod.run){
     const rl=log.run||{};
     const target=wod.run.target+(programWeek-1)*5;
-    const rdonly=!isToday||rl.done;
+    const rdonly=!isToday;
     html+=`<div class="workout-sec-lbl run-lbl">Run</div>
     <div class="run-card">
       <div class="run-row">
@@ -2084,7 +2125,8 @@ function renderWorkout(){
       const fiLog=(workoutLog.finishers||{})[fi]||{};
       html+=`<div class="workout-sec-lbl" style="padding-top:14px;">${fin.label} <span style="color:#2e2e2e;font-style:italic;text-transform:none;letter-spacing:0;">(optional)</span></div>
       <div class="finisher-card">`;
-      fin.items.forEach((item,i)=>{
+      const finItems=getFinisherItems(fin.items,selectedWorkoutDayIdx,programWeek,fi);
+      finItems.forEach((item,i)=>{
         const done=!!fiLog[i];
         html+=`<div class="finisher-item${done?' done-fi':''}" onclick="toggleFinisher(${fi},${i})">
           <div class="finisher-chk${done?' done':''}">${done?'✓':''}</div>
@@ -2307,11 +2349,16 @@ function getWeekKey(){
 }
 
 function buildMealSysPrompt(intakeCal){
-  return`You are a meal planning assistant for Nick, a 28-year-old active guy training 5x/week. Daily intake target: ~${intakeCal} kcal. Breakfast already handled (~850 kcal, ~40g protein).
-Lunch: cold/no reheat, wrap or sandwich, prepped ahead, ~450 kcal, ~35g protein.
-Dinner: home-cooked, same every night, batch-friendly, under 40 min active, ~650 kcal, ~50g protein.
-Snacks: grab-and-go, 150–250 cal, high protein. Include a brief description with specific portion (e.g. "1 oz jerky + 1 string cheese" or "2 tbsp almond butter on 1 rice cake").
-Be realistic — something someone would genuinely eat 5–7 days.${mealPrefs?`\nDislikes/preferences: ${mealPrefs}`:''}`;
+  const wk=getWeekKey();
+  return`You are a meal planning assistant for Nick, a 28-year-old active guy training 5x/week. Week: ${wk}. Daily intake target: ~${intakeCal} kcal. Breakfast already handled (~850 kcal, ~40g protein).
+
+LUNCH (~450 kcal, ~35g protein): cold/no reheat, prepped ahead. Rotate through diverse options — NOT always wraps or sandwiches. Examples of categories to pull from: grain bowls (rice, farro, quinoa), Asian-inspired (sesame noodles, teriyaki, bibimbap-style), Mediterranean (falafel wrap, tabbouleh, shawarma bowl), Mexican (burrito bowl, taco salad, elote bowl), American deli (sub, club, turkey BLT), protein-rich salads (chicken Caesar, steak salad, tuna poke bowl), cold pasta dishes, cottage cheese bowls, stuffed pitas. Pick something Nick would genuinely want to eat cold.
+
+DINNER (~650 kcal, ~50g protein): home-cooked, batch-friendly, under 40 min active prep, same meal all week. Rotate widely across: stir-fries (chicken, beef, shrimp), pasta dishes, tacos/burritos, sheet pan meals, curry (Thai, Indian), grilled proteins with sides, soups/stews, rice bowls, smash burgers, stuffed peppers, salmon or fish dishes, ground turkey skillet, egg-based (frittata, shakshuka), pork tenderloin, chili. Make it a real specific recipe with a name, not just "chicken and rice."
+
+SNACKS (3 suggestions, 150–250 cal, high protein): Rotate through diverse options — NOT always jerky or string cheese. Examples: Greek yogurt + berries, protein bar (specify brand/type), cottage cheese + fruit, edamame, hard-boiled eggs, turkey roll-ups, hummus + veggies + pita, quest chips, chocolate milk, nut butter protein balls, smoked salmon crackers, skyr, protein shake, rice cakes + PB + banana, deli turkey slices, roasted chickpeas. Give specific portions.
+
+Each week should feel meaningfully different from prior weeks. Do not repeat the same lunch or dinner two weeks in a row.${mealPrefs?`\nDislikes/preferences: ${mealPrefs}`:''}`;
 }
 
 function savePlanToFirebase(){
