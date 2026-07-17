@@ -377,6 +377,34 @@
   .mp-gen-btn{background:var(--green);color:var(--cream2);border:none;font-family:var(--body);font-size:13px;padding:11px 28px;cursor:pointer;touch-action:manipulation;letter-spacing:0.04em;}
   .mp-loading{padding:36px 14px;text-align:center;font-family:var(--body);font-size:13px;color:var(--muted);font-style:italic;}
   .mp-footer{padding:8px 14px 12px;font-size:9px;color:var(--muted2);font-family:var(--body);font-style:italic;text-align:center;border-top:1px solid var(--border);}
+  .mp-recipe-btn{background:none;border:none;font-family:var(--body);font-size:10px;color:var(--muted2);cursor:pointer;touch-action:manipulation;padding:5px 0 2px;display:flex;align-items:center;gap:4px;letter-spacing:0.06em;text-transform:uppercase;}
+  .mp-recipe-btn:active{opacity:0.5;}
+  .mp-recipe-body{background:var(--cream2);border-left:2px solid var(--border2);margin:4px 0 2px;padding:8px 10px 6px;}
+  .mp-recipe-step{display:flex;gap:8px;padding:3px 0;font-size:12px;font-family:var(--body);color:var(--text);line-height:1.45;}
+  .mp-recipe-step-num{font-family:var(--serif);font-size:11px;color:var(--muted2);flex-shrink:0;min-width:14px;padding-top:1px;}
+  .mp-recipe-groceries{margin-top:6px;padding-top:6px;border-top:1px solid var(--cream3);}
+  .mp-recipe-grocery-lbl{font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);margin-bottom:4px;}
+  .mp-recipe-grocery-item{font-size:12px;font-family:var(--body);color:var(--muted);padding:2px 0;}
+  /* Archive */
+  .mp-archive{border-top:2px solid var(--border);}
+  .mp-archive-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--cream2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
+  .mp-archive-hdr-left{display:flex;align-items:center;gap:8px;}
+  .mp-archive-title{font-family:var(--serif);font-size:13px;color:var(--text);font-style:italic;}
+  .mp-archive-count{font-size:9px;color:var(--muted2);font-family:var(--body);background:var(--cream3);padding:2px 6px;}
+  .mp-archive-chev{font-size:11px;color:var(--muted2);transition:transform 0.15s;}
+  .mp-archive-body{display:none;}
+  .mp-arch-card{border-bottom:1px solid var(--cream3);}
+  .mp-arch-card-hdr{display:flex;align-items:flex-start;justify-content:space-between;padding:10px 14px 8px;cursor:pointer;gap:10px;}
+  .mp-arch-meal-name{font-family:var(--serif);font-size:14px;color:var(--text);margin-bottom:2px;}
+  .mp-arch-meta{font-size:10px;color:var(--muted2);font-family:var(--body);font-style:italic;}
+  .mp-arch-chev{font-size:11px;color:var(--muted2);flex-shrink:0;padding-top:3px;transition:transform 0.15s;}
+  .mp-arch-card-body{display:none;padding:0 14px 10px;background:var(--cream2);}
+  .mp-arch-desc{font-size:12px;color:var(--muted);font-family:var(--body);line-height:1.5;padding:6px 0 4px;}
+  .mp-arch-section-lbl{font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted2);font-family:var(--body);padding:6px 0 3px;border-top:1px solid var(--cream3);margin-top:4px;}
+  .mp-arch-step{display:flex;gap:7px;padding:2px 0;font-size:12px;font-family:var(--body);color:var(--text);line-height:1.4;}
+  .mp-arch-step-num{font-family:var(--serif);font-size:10px;color:var(--muted2);flex-shrink:0;min-width:14px;padding-top:2px;}
+  .mp-arch-grocery{font-size:12px;font-family:var(--body);color:var(--muted);padding:2px 0;}
+  .mp-archive-empty{padding:16px 14px;font-size:12px;color:var(--muted2);font-family:var(--body);font-style:italic;text-align:center;}
   /* PROGRESS TAB */
   .prog-wrap{padding:4px 0 24px;}
   .prog-section{margin:0 0 18px;}
@@ -599,6 +627,7 @@
 
 <div id="view-meals" style="display:none">
   <div id="meal-plan-content"></div>
+  <div id="meal-archive-content"></div>
   <div class="section" style="margin-top:0;border-top:2px solid var(--border)">
     <div class="sec-hdr" style="cursor:default"><span class="sec-title">Meal Library</span></div>
     <div id="body-saved-meals"></div>
@@ -769,7 +798,7 @@ let weight=205, calorieTarget=500;
 let currentDeficit=0, weeklyData={}, weightData={};
 let weekChartExpanded=false, weighInChecked=false;
 let bfLog={};
-let weeklyMealPlan=null, mealPlanLoading=false, mealPrefs='';
+let weeklyMealPlan=null, mealPlanLoading=false, mealPrefs='', mealHistory={};
 let workoutLog={}, workoutExpanded={}, wlFbRef=null, programWeek=1;
 let selectedWorkoutDayIdx=new Date().getDay(), workoutLogCache={}, lastWeekLogCache={};
 let restTimerInterval=null, restTimerSecs=0, restTimerEndTime=0;
@@ -1647,7 +1676,7 @@ window.switchTab=(tab)=>{
   document.getElementById('tab-meals').classList.toggle('active',tab==='meals');
   document.getElementById('tab-workout').classList.toggle('active',tab==='workout');
   document.getElementById('tab-progress').classList.toggle('active',tab==='progress');
-  if(tab==='meals'){renderMealsLib();fetchMealPlan();}
+  if(tab==='meals'){renderMealsLib();fetchMealPlan();fetchMealHistory();}
   if(tab==='workout'){fetchLastWeekLog(selectedWorkoutDayIdx);renderWorkout();}
   if(tab==='progress')fetchProgressData();
 };
@@ -2361,10 +2390,15 @@ SNACKS (3 suggestions, 150–250 cal, high protein): Rotate through diverse opti
 Each week should feel meaningfully different from prior weeks. Do not repeat the same lunch or dinner two weeks in a row.${mealPrefs?`\nDislikes/preferences: ${mealPrefs}`:''}`;
 }
 
-function savePlanToFirebase(){
+function savePlanToFirebase(archiveAsNewWeek=false){
   if(fbDb&&fbRefFn&&weeklyMealPlan){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
-      set(fbRefFn(fbDb,`mealPlan/${getWeekKey()}`),weeklyMealPlan).catch(()=>{});
+      set(fbRefFn(fbDb,'mealPlan/active'),weeklyMealPlan).catch(()=>{});
+      if(archiveAsNewWeek){
+        set(fbRefFn(fbDb,`mealPlan/history/${getWeekKey()}`),weeklyMealPlan).catch(()=>{});
+        mealHistory[getWeekKey()]=weeklyMealPlan;
+        renderMealHistory();
+      }
     });
   }
 }
@@ -2412,7 +2446,7 @@ async function fetchMealPlan(){
   if(weeklyMealPlan){renderMealPlan(weeklyMealPlan);return;}
   if(fbDb&&fbRefFn&&fbGetFn){
     try{
-      const snap=await fbGetFn(fbRefFn(fbDb,`mealPlan/${getWeekKey()}`));
+      const snap=await fbGetFn(fbRefFn(fbDb,'mealPlan/active'));
       const plan=snap.val();
       if(plan){weeklyMealPlan=plan;renderMealPlan(plan);return;}
     }catch(e){}
@@ -2435,13 +2469,13 @@ window.generateWeeklyPlan=async()=>{
   const el=document.getElementById('meal-plan-content');
   if(el)el.innerHTML='<div class="mp-loading">Crafting your meal plan…</div>';
   const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
-  const sys=buildMealSysPrompt(intakeCal)+'\n\nRespond with ONLY valid JSON, no markdown:\n{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]},"snacks":[{"name":"","description":"","cal":0,"protein":0,"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"groceries":[]}]}';
+  const sys=buildMealSysPrompt(intakeCal)+'\n\nRespond with ONLY valid JSON, no markdown. Include a "recipe" field for lunch and dinner: an array of 5–8 specific step strings covering the full cook procedure with quantities.\n{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]},"snacks":[{"name":"","description":"","cal":0,"protein":0,"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"groceries":[]}]}';
   try{
     const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content:'Generate a varied high-protein meal plan for this week.'}]})});
     const data=await res.json();
     let text='';for(const b of(data.content||[])){if(b.type==='text')text+=b.text;}
     const plan=JSON.parse(text.trim().replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,''));
-    weeklyMealPlan=plan;savePlanToFirebase();renderMealPlan(plan);
+    weeklyMealPlan=plan;savePlanToFirebase(true);renderMealPlan(plan);
   }catch(e){
     if(el)el.innerHTML=`${buildPrefsBarHtml()}<div class="mp-gen-wrap"><div class="mp-gen-note" style="color:var(--red)">Something went wrong — check connection and retry.</div><button class="mp-gen-btn" onclick="generateWeeklyPlan()">Retry</button></div>`;
   }finally{mealPlanLoading=false;}
@@ -2456,8 +2490,8 @@ window.regenSingleMeal=async(type,idx)=>{
   const cardEl=document.getElementById(cardId);
   if(cardEl)cardEl.innerHTML='<div style="padding:14px;text-align:center;font-family:var(--body);font-size:11px;color:var(--muted);font-style:italic">Regenerating…</div>';
   const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
-  const schema=isSnack?'{"snack":{"name":"","description":"","cal":0,"protein":0,"groceries":[]}}':type==='lunch'?'{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]}}':'{"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","groceries":[]}}';
-  const ctx=`Current plan — Lunch: "${weeklyMealPlan.lunch?.name}", Dinner: "${weeklyMealPlan.dinner?.name}", Snacks: "${(weeklyMealPlan.snacks||[]).map(s=>s.name).join(', ')}". Replace "${current?.name}" with something DIFFERENT. Respond ONLY with valid JSON: ${schema}`;
+  const schema=isSnack?'{"snack":{"name":"","description":"","cal":0,"protein":0,"groceries":[]}}':type==='lunch'?'{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]}}':'{"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]}}';
+  const ctx=`Current plan — Lunch: "${weeklyMealPlan.lunch?.name}", Dinner: "${weeklyMealPlan.dinner?.name}", Snacks: "${(weeklyMealPlan.snacks||[]).map(s=>s.name).join(', ')}". Replace "${current?.name}" with something DIFFERENT. Include a "recipe" array of 5–8 specific steps with quantities. Respond ONLY with valid JSON: ${schema}`;
   const sys=buildMealSysPrompt(intakeCal)+'\n\n'+ctx;
   try{
     const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content:`Give me a different ${isSnack?'snack':type} — not "${current?.name}".`}]})});
@@ -2502,6 +2536,11 @@ function renderMealPlan(plan){
       <div class="mp-meal-desc">${plan.lunch?.description||''}</div>
       <div class="mp-meal-meta">${plan.lunch?.cal||0} cal · ${plan.lunch?.protein||0}g protein</div>
       ${plan.lunch?.prepNote?`<div class="mp-prep-note">${plan.lunch.prepNote}</div>`:''}
+      ${plan.lunch?.recipe?.length?`<button class="mp-recipe-btn" onclick="toggleRecipe('lunch')">Recipe &amp; Groceries <span id="recipe-chev-lunch">▾</span></button>
+      <div class="mp-recipe-body" id="recipe-body-lunch" style="display:none">
+        ${plan.lunch.recipe.map((s,i)=>`<div class="mp-recipe-step"><span class="mp-recipe-step-num">${i+1}.</span>${s}</div>`).join('')}
+        ${plan.lunch.groceries?.length?`<div class="mp-recipe-groceries"><div class="mp-recipe-grocery-lbl">Groceries</div>${plan.lunch.groceries.map(g=>`<div class="mp-recipe-grocery-item">· ${g}</div>`).join('')}</div>`:''}
+      </div>`:''}
       <button class="mp-add-lib-btn" onclick="addMealToLibrary('lunch')">+ Save to library</button>
     </div>
     <div class="mp-section-lbl">Dinner — nightly · home-cooked</div>
@@ -2513,6 +2552,11 @@ function renderMealPlan(plan){
       <div class="mp-meal-desc">${plan.dinner?.description||''}</div>
       <div class="mp-meal-meta">${plan.dinner?.cal||0} cal · ${plan.dinner?.protein||0}g protein</div>
       ${plan.dinner?.prepNote?`<div class="mp-prep-note">${plan.dinner.prepNote}</div>`:''}
+      ${plan.dinner?.recipe?.length?`<button class="mp-recipe-btn" onclick="toggleRecipe('dinner')">Recipe &amp; Groceries <span id="recipe-chev-dinner">▾</span></button>
+      <div class="mp-recipe-body" id="recipe-body-dinner" style="display:none">
+        ${plan.dinner.recipe.map((s,i)=>`<div class="mp-recipe-step"><span class="mp-recipe-step-num">${i+1}.</span>${s}</div>`).join('')}
+        ${plan.dinner.groceries?.length?`<div class="mp-recipe-groceries"><div class="mp-recipe-grocery-lbl">Groceries</div>${plan.dinner.groceries.map(g=>`<div class="mp-recipe-grocery-item">· ${g}</div>`).join('')}</div>`:''}
+      </div>`:''}
       <button class="mp-add-lib-btn" onclick="addMealToLibrary('dinner')">+ Save to library</button>
     </div>
     <div class="mp-section-lbl">Snack Options — pick 1–2 daily</div>
@@ -2563,14 +2607,118 @@ window.toggleGrocery=()=>{
 };
 
 window.regenMealPlan=()=>{
-  if(!confirm("Replace this week's plan with a new suggestion?"))return;
+  if(!confirm("Replace current plan with a new suggestion? The old plan will be saved to your archive."))return;
   weeklyMealPlan=null;
   if(fbDb&&fbRefFn){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({remove})=>{
-      remove(fbRefFn(fbDb,`mealPlan/${getWeekKey()}`)).catch(()=>{});
+      remove(fbRefFn(fbDb,'mealPlan/active')).catch(()=>{});
     });
   }
   generateWeeklyPlan();
+};
+
+window.toggleRecipe=(id)=>{
+  const body=document.getElementById(`recipe-body-${id}`);
+  const chev=document.getElementById(`recipe-chev-${id}`);
+  if(!body)return;
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'block';
+  if(chev)chev.textContent=open?'▾':'▴';
+};
+
+function formatWeekKey(wk){
+  // "2026-W29" → "Week 29 · 2026"
+  const m=wk.match(/^(\d{4})-W(\d+)$/);
+  if(!m)return wk;
+  // Find Monday of that ISO week
+  const year=parseInt(m[1]),week=parseInt(m[2]);
+  const jan4=new Date(year,0,4);
+  const mon=new Date(jan4);
+  mon.setDate(jan4.getDate()-(jan4.getDay()||7)+1+(week-1)*7);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  const fmt=(d)=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return`${fmt(mon)}–${fmt(sun)}, ${year}`;
+}
+
+async function fetchMealHistory(){
+  const el=document.getElementById('meal-archive-content');
+  if(!el)return;
+  if(Object.keys(mealHistory).length){renderMealHistory();return;}
+  if(!fbDb||!fbRefFn||!fbGetFn)return;
+  try{
+    const snap=await fbGetFn(fbRefFn(fbDb,'mealPlan/history'));
+    mealHistory=snap.val()||{};
+    renderMealHistory();
+  }catch(e){}
+}
+
+function renderMealHistory(){
+  const el=document.getElementById('meal-archive-content');
+  if(!el)return;
+  const weeks=Object.entries(mealHistory).sort((a,b)=>b[0].localeCompare(a[0]));
+  if(!weeks.length){el.innerHTML='';return;}
+  const lunches=weeks.filter(([,p])=>p.lunch?.name);
+  const dinners=weeks.filter(([,p])=>p.dinner?.name);
+  const archiveCard=(wk,meal,type,idx)=>{
+    const id=`arch-${type}-${idx}`;
+    const steps=(meal.recipe||[]).map((s,i)=>`<div class="mp-arch-step"><span class="mp-arch-step-num">${i+1}.</span>${s}</div>`).join('');
+    const groc=(meal.groceries||[]).map(g=>`<div class="mp-arch-grocery">· ${g}</div>`).join('');
+    return`<div class="mp-arch-card">
+      <div class="mp-arch-card-hdr" onclick="toggleArchiveCard('${id}')">
+        <div>
+          <div class="mp-arch-meal-name">${meal.name}</div>
+          <div class="mp-arch-meta">${formatWeekKey(wk)} · ${meal.cal||0} cal · ${meal.protein||0}g pro</div>
+        </div>
+        <span class="mp-arch-chev" id="${id}-chev">▾</span>
+      </div>
+      <div class="mp-arch-card-body" id="${id}-body">
+        <div class="mp-arch-desc">${meal.description||''}</div>
+        ${meal.prepNote?`<div class="mp-prep-note" style="margin:4px 0">${meal.prepNote}</div>`:''}
+        ${steps?`<div class="mp-arch-section-lbl">Recipe</div>${steps}`:''}
+        ${groc?`<div class="mp-arch-section-lbl">Groceries</div>${groc}`:''}
+      </div>
+    </div>`;
+  };
+  el.innerHTML=`<div class="mp-archive">
+    <div class="mp-archive-hdr" onclick="toggleArchiveSection('lunches')">
+      <div class="mp-archive-hdr-left">
+        <span class="mp-archive-title">Past Lunches</span>
+        <span class="mp-archive-count">${lunches.length}</span>
+      </div>
+      <span class="mp-archive-chev" id="arch-chev-lunches">▾</span>
+    </div>
+    <div class="mp-archive-body" id="arch-body-lunches">
+      ${lunches.length?lunches.map(([wk,p],i)=>archiveCard(wk,p.lunch,'lunch',i)).join(''):'<div class="mp-archive-empty">No lunches archived yet</div>'}
+    </div>
+    <div class="mp-archive-hdr" onclick="toggleArchiveSection('dinners')">
+      <div class="mp-archive-hdr-left">
+        <span class="mp-archive-title">Past Dinners</span>
+        <span class="mp-archive-count">${dinners.length}</span>
+      </div>
+      <span class="mp-archive-chev" id="arch-chev-dinners">▾</span>
+    </div>
+    <div class="mp-archive-body" id="arch-body-dinners">
+      ${dinners.length?dinners.map(([wk,p],i)=>archiveCard(wk,p.dinner,'dinner',i)).join(''):'<div class="mp-archive-empty">No dinners archived yet</div>'}
+    </div>
+  </div>`;
+}
+
+window.toggleArchiveSection=(id)=>{
+  const body=document.getElementById(`arch-body-${id}`);
+  const chev=document.getElementById(`arch-chev-${id}`);
+  if(!body)return;
+  const open=body.style.display!=='none'&&body.style.display!=='';
+  body.style.display=open?'none':'block';
+  if(chev)chev.textContent=open?'▾':'▴';
+};
+
+window.toggleArchiveCard=(id)=>{
+  const body=document.getElementById(`${id}-body`);
+  const chev=document.getElementById(`${id}-chev`);
+  if(!body)return;
+  const open=body.style.display!=='none'&&body.style.display!=='';
+  body.style.display=open?'none':'block';
+  if(chev)chev.textContent=open?'▾':'▴';
 };
 
 /* ═══════════════════════════════════════════
