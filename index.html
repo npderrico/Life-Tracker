@@ -803,7 +803,7 @@ let weekChartExpanded=false, weighInChecked=false;
 let bfLog={};
 let weeklyMealPlan=null, mealPlanLoading=false, mealPrefs='', mealHistory={}, mealArchivedMeals={}, mealArchiveIndex=[];
 let workoutLog={}, workoutExpanded={}, wlFbRef=null, programWeek=1;
-let selectedWorkoutDayIdx=new Date().getDay(), workoutLogCache={}, lastWeekLogCache={};
+let selectedWorkoutDayIdx=new Date().getDay(), workoutLogCache={}, lastWeekLogCache={}, recentWeights={};
 let restTimerInterval=null, restTimerSecs=0, restTimerEndTime=0;
 const TODAY=new Date().toDateString();
 const AGE=new Date().getFullYear()-1998;
@@ -1013,8 +1013,29 @@ async function initFirebase(){
       bfLog=snap.val()||{};
       if(activeTab==='progress')fetchProgressData();
     });
-    // Program week state
-    get(ref(fbDb,'workoutState')).then(snap=>{const s=snap.val();if(s&&s.week)programWeek=s.week;}).catch(()=>{});
+    // Program week: auto-progress from stored start date
+    get(ref(fbDb,'workoutState')).then(snap=>{
+      const s=snap.val()||{};
+      if(s.startDate){
+        const startMs=new Date(s.startDate).getTime();
+        const weeksSince=Math.floor((Date.now()-startMs)/(7*24*60*60*1000));
+        programWeek=Math.max(1,Math.min(6,weeksSince+1));
+      } else {
+        const now=new Date();
+        const dow=now.getDay()||7;
+        const monday=new Date(now);
+        monday.setDate(now.getDate()-(dow-1));
+        monday.setHours(0,0,0,0);
+        const startDate=monday.toISOString().split('T')[0];
+        programWeek=s.week||1;
+        import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
+          set(ref(fbDb,'workoutState'),{...s,startDate,week:programWeek}).catch(()=>{});
+        });
+      }
+      if(activeTab==='workout')renderWorkout();
+    }).catch(()=>{});
+    // Recent weights: per-exercise fallback for ↑ chip when last-week log is missing
+    get(ref(fbDb,'workoutRecentWeights')).then(snap=>{if(snap.val())recentWeights=snap.val();}).catch(()=>{});
   }catch(e){
     syncBar.textContent='Offline — changes saved locally only';
     syncBar.className='sync-bar err';
@@ -1965,8 +1986,14 @@ function saveWorkoutLog(){
 
 function saveProgramWeek(){
   if(fbDb&&fbRefFn){
+    const now=new Date();
+    const dow=now.getDay()||7;
+    const monday=new Date(now);
+    monday.setDate(now.getDate()-(dow-1)-(programWeek-1)*7);
+    monday.setHours(0,0,0,0);
+    const startDate=monday.toISOString().split('T')[0];
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
-      set(fbRefFn(fbDb,'workoutState'),{week:programWeek}).catch(()=>{});
+      set(fbRefFn(fbDb,'workoutState'),{startDate,week:programWeek}).catch(()=>{});
     });
   }
 }
@@ -2095,7 +2122,10 @@ function renderWorkout(){
       const sets=exLog.sets||[];
       const lwExLog=lwLog.exercises?.[ex.id]||{};
       const lwSets=lwExLog.sets||[];
-      const lwBestWeight=lwSets.filter(s=>s.done&&s.weight).reduce((best,s)=>Math.max(best,s.weight||0),0)||null;
+      const todayKey=TODAY.replace(/ /g,'-');
+      const rwEntry=recentWeights[ex.id];
+      const recentFallback=rwEntry&&rwEntry.date!==todayKey?rwEntry.weight:null;
+      const lwBestWeight=lwSets.filter(s=>s.done&&s.weight).reduce((best,s)=>Math.max(best,s.weight||0),0)||(recentFallback||null);
       const doneSets=sets.filter(s=>s.done).length;
       const allDone=doneSets>=ex.sets&&doneSets>0;
       const partial=doneSets>0&&!allDone;
@@ -2224,6 +2254,17 @@ window.completeSet=(exId,idx)=>{
   const alreadyDone=workoutLog.exercises[exId].sets[idx]?.done;
   workoutLog.exercises[exId].sets[idx]={weight:w,reps:r,rpe,done:!alreadyDone};
   saveWorkoutLog();
+  if(!alreadyDone&&w){
+    const todayKey=TODAY.replace(/ /g,'-');
+    if(!recentWeights[exId]||w>=(recentWeights[exId].weight||0)||recentWeights[exId].date===todayKey){
+      recentWeights[exId]={weight:w,date:todayKey};
+      if(fbDb&&fbRefFn){
+        import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
+          set(fbRefFn(fbDb,`workoutRecentWeights/${exId}`),{weight:w,date:todayKey}).catch(()=>{});
+        });
+      }
+    }
+  }
   renderWorkout();
   if(!alreadyDone){
     const wod=todayWorkout();
@@ -2384,7 +2425,19 @@ function buildMealSysPrompt(intakeCal){
   const wk=getWeekKey();
   return`You are a meal planning assistant for Nick, a 28-year-old active guy training 5x/week. Week: ${wk}. Daily intake target: ~${intakeCal} kcal. Breakfast already handled (~850 kcal, ~40g protein).
 
-LUNCH (~450 kcal, ~35g protein): cold/no reheat, prepped ahead. Rotate through diverse options — NOT always wraps or sandwiches. Examples of categories to pull from: grain bowls (rice, farro, quinoa), Asian-inspired (sesame noodles, teriyaki, bibimbap-style), Mediterranean (falafel wrap, tabbouleh, shawarma bowl), Mexican (burrito bowl, taco salad, elote bowl), American deli (sub, club, turkey BLT), protein-rich salads (chicken Caesar, steak salad, tuna poke bowl), cold pasta dishes, cottage cheese bowls, stuffed pitas. Pick something Nick would genuinely want to eat cold.
+LUNCH (~450 kcal, ~35g protein): cold/no reheat, prepped ahead. Use the week key above to rotate across the full pool below — treat it as a seed so each week lands on a different section. Pick ONE specific named lunch from a category you haven't used in recent weeks.
+
+LUNCH POOL — rotate across all categories week to week:
+GRAIN BOWLS: Chicken teriyaki rice bowl · BBQ pulled chicken rice bowl · Sesame-ginger chicken rice bowl · Hoisin pork rice bowl · Korean beef bulgogi bowl · Spicy tuna rice bowl · Salmon + edamame rice bowl · Shrimp fried rice bowl (cold) · Farro bowl + roasted chicken + kale + lemon tahini · Farro + roasted beet + goat cheese + arugula · Quinoa power bowl + black beans + corn + lime dressing · Quinoa + roasted sweet potato + chickpea + feta · Wild rice + cranberry + pecan + shredded turkey · Brown rice + edamame + avocado + soy-sesame dressing · White rice + rotisserie chicken + cucumber + ginger dressing
+ASIAN-INSPIRED: Cold sesame noodles + shredded chicken · Peanut noodles + shrimp + scallions · Soba noodle salad + cucumber + sesame dressing · Bibimbap bowl (cold: veggies + ground beef + gochujang) · Cold ramen salad + pork + soft egg · Vietnamese vermicelli bowl + grilled pork + herbs · Cold udon + edamame + sesame-miso dressing · Japanese bento box (rice + teriyaki chicken + tamago) · Banh mi deconstructed bowl (cold) · Thai basil ground chicken bowl · Korean-style kimchi fried rice bowl (cold) · Larb (Thai minced chicken salad) · Cold miso-glazed salmon + soba · Kung pao chicken bowl (cold) · Dan dan noodle salad (cold, peanut-chili sauce)
+MEDITERRANEAN: Chicken shawarma bowl + tahini + tabbouleh · Beef gyro bowl + cucumber + tzatziki + pita · Falafel plate + hummus + pita + pickled veg · Greek chicken + orzo salad · Tabbouleh + grilled chicken + pita · Turkish ground lamb + rice + cucumber yogurt · Lemon-herb chicken + white bean salad · Moroccan chicken + couscous + golden raisins + almonds · Greek salad + tuna + pita chips · Lebanese fattoush + chicken · Mediterranean tuna plate + olives + cucumber + feta · Smashed falafel wrap + tahini + pickled cabbage · Chicken souvlaki bowl + tzatziki + orzo · Shakshuka-style egg + pita wrap (cold) · Grilled halloumi + roasted veg + couscous
+MEXICAN: Burrito bowl — chicken + rice + black beans + pico + guac · Steak taco salad + tortilla strips + lime crema · Carnitas burrito bowl + pico de gallo + pickled jalapeño · Shrimp elote bowl — corn + peppers + cotija + chili lime · Chicken al pastor bowl + pineapple salsa · Ground turkey taco rice bowl + salsa verde · Mexican street corn salad + shredded chicken · Black bean + brown rice + avocado + salsa verde bowl · Chicken fajita bowl (cold, peppers + onions) · Loaded taco salad — ground beef + lettuce + cheese + beans + sour cream · Baja fish taco bowl + slaw · Crunchy taco salad in tortilla shell · Beef birria bowl + consomme dipping cup · Chicken enchilada bowl (deconstructed, cold) · Chorizo + potato + egg burrito wrap (cold)
+DELI / SANDWICHES: Turkey club sub + side salad · Italian sub — salami + capicola + provolone + pepperoncini · Ham + Swiss + Dijon croissant + fruit · Steak and cheddar sub + caramelized onion · Roast beef + horseradish + arugula hoagie · Chicken Philly wrap · BLT wrap + avocado + chipotle mayo · Caprese sandwich on ciabatta (pressed, cold) · Buffalo chicken wrap + blue cheese + celery · Turkey + avocado + bacon wrap · Pastrami + Swiss on rye + pickle · Grilled chicken + pesto + provolone sandwich · Classic cold-cut hero + oil + vinegar · Smoked turkey + brie + apple on sourdough · Chicken salad croissant + grapes
+PROTEIN SALADS: Chicken Caesar salad + parmesan crisps · Cobb salad + turkey + blue cheese + bacon · Steak arugula salad + shaved parm + lemon dressing · BBQ chicken chopped salad + corn + black bean + cilantro · Thai peanut chicken salad · Chicken Waldorf salad on romaine · Tuna Niçoise salad + green beans + soft egg · Sesame seared tuna + mixed greens + avocado · Salmon + spinach + cucumber + soft egg salad · Shrimp + avocado + grapefruit + red onion salad · Southwest chicken salad + corn + black bean + ranch · Smoked salmon + arugula + cucumber + capers salad · Grilled chicken + watermelon + feta + mint · Lemon chicken orzo salad · Antipasto salad + salami + provolone + pepperoncini + olives
+COLD PASTA: Pasta primavera + grilled chicken (cold) · Orzo pasta salad + sun-dried tomato + feta + basil · Pesto pasta + chicken + cherry tomato · Farfalle + peas + prosciutto + parmesan (cold) · Tortellini + pesto + baby spinach (cold) · Tuna pasta salad + olives + capers + celery · Lemony shrimp + asparagus pasta (cold) · Whole wheat pasta + turkey sausage + marinara (cold) · Cold mac + BBQ pulled beef bowl · Fettuccine + chicken + caesar dressing (cold)
+COTTAGE CHEESE / EGGS: Cottage cheese bowl + diced cucumber + tomato + za'atar · Cottage cheese + smoked salmon + everything bagel seasoning · Cottage cheese + roasted red pepper + turkey strips · Egg salad (Greek yogurt-based) + whole grain crackers + fruit · Deviled egg plate + turkey roll-ups + apple slices · Cottage cheese power bowl + black beans + salsa + jalapeño · Hard-boiled eggs + chicken salad on romaine cups · Egg + veggie protein box (eggs + hummus + veggies + crackers) · Cottage cheese + avocado + everything toast bites · Cottage cheese + sun-dried tomato + basil + pine nuts
+
+Pick ONE specific lunch from this pool. Vary the category from week to week using the week key as a pointer.
 
 DINNER (~650 kcal, ~50g protein): home-cooked, batch-friendly, under 40 min active prep, same meal all week. Rotate widely across: stir-fries (chicken, beef, shrimp), pasta dishes, tacos/burritos, sheet pan meals, curry (Thai, Indian), grilled proteins with sides, soups/stews, rice bowls, smash burgers, stuffed peppers, salmon or fish dishes, ground turkey skillet, egg-based (frittata, shakshuka), pork tenderloin, chili. Make it a real specific recipe with a name, not just "chicken and rice."
 
