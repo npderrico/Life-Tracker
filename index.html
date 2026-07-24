@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Nick's Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -567,6 +568,7 @@
     <div class="hdr-center">
       <div class="hdr-eyebrow">Daily Log</div>
       <div class="hdr-name">Nick's Tracker</div>
+      <div class="hdr-streak" id="hdr-streak"></div>
     </div>
     <div class="quote-panel">
       <div class="golf-panel">
@@ -985,7 +987,7 @@ async function initFirebase(){
       } else {
         seedFromYesterday();
       }
-      if(!weighInChecked){weighInChecked=true;checkWeighIn();}
+      if(!weighInChecked){weighInChecked=true;checkWeighIn();fetchStreak();}
       syncBar.textContent='✦ synced across devices';
       syncBar.className='sync-bar ok';
     });
@@ -1055,11 +1057,14 @@ async function initFirebase(){
     syncBar.textContent='Offline — changes saved locally only';
     syncBar.className='sync-bar err';
     loadLocal();
+    renderMeals();renderActs();renderTasks();renderWeekChart();
+    if(!weighInChecked){weighInChecked=true;checkWeighIn();}
   }
 }
 
 function saveData(){
-  const data={qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,deficit:currentDeficit,extraBurn:currentExtraBurn,foodOrder,actOrder,date:TODAY};
+  // JSON round-trip strips undefined values, which Firebase set() rejects
+  const data=JSON.parse(JSON.stringify({qty,acts,custom,customActs,tasks,deleted:[...deletedIds],deletedActs:[...deletedActIds],weight,calorieTarget,deficit:currentDeficit,extraBurn:currentExtraBurn,foodOrder,actOrder,date:TODAY}));
   if(fbRef){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
       set(fbRef,data).catch(()=>{});
@@ -1991,9 +1996,11 @@ function selectedDayDateKey(){
 }
 
 function saveWorkoutLog(){
+  // Firebase set() throws on undefined values (empty weight/reps/rpe fields) — strip them first
+  const clean=JSON.parse(JSON.stringify(workoutLog));
   if(wlFbRef){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
-      set(wlFbRef,workoutLog).catch(()=>{});
+      set(wlFbRef,clean).catch(()=>{});
     });
   }
   localStorage.setItem('nt5-wl-'+TODAY,JSON.stringify(workoutLog));
@@ -2686,7 +2693,7 @@ window.generateWeeklyPlan=async()=>{
   mealPlanLoading=true;
   const el=document.getElementById('meal-plan-content');
   if(el)el.innerHTML='<div class="mp-loading">Crafting your meal plan…</div>';
-  const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
+  const intakeCal=Math.max(1400,Math.round(calcTDEE(weight)-calorieTarget));
   const sys=buildMealSysPrompt(intakeCal)+'\n\nRespond with ONLY valid JSON, no markdown.\n- Lunch and dinner: always include "recipe" (5–8 step strings with quantities).\n- Snacks: include "recipe" (3–5 steps) ONLY if the snack requires actual preparation — e.g., protein balls, overnight oats, homemade bars, energy bites. Leave "recipe" as an empty array [] for obvious grab-and-go items like Greek yogurt, jerky, string cheese, hard-boiled eggs.\n{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]},"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]},"snacks":[{"name":"","description":"","cal":0,"protein":0,"recipe":[],"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"recipe":[],"groceries":[]},{"name":"","description":"","cal":0,"protein":0,"recipe":[],"groceries":[]}]}';
   try{
     const res=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content:'Generate a varied high-protein meal plan for this week.'}]})});
@@ -2707,7 +2714,7 @@ window.regenSingleMeal=async(type,idx)=>{
   const cardId=isSnack?`mp-snack-${idx}`:`mp-card-${type}`;
   const cardEl=document.getElementById(cardId);
   if(cardEl)cardEl.innerHTML='<div style="padding:14px;text-align:center;font-family:var(--body);font-size:11px;color:var(--muted);font-style:italic">Regenerating…</div>';
-  const intakeCal=Math.max(1400,Math.round(2364-calorieTarget));
+  const intakeCal=Math.max(1400,Math.round(calcTDEE(weight)-calorieTarget));
   const schema=isSnack?'{"snack":{"name":"","description":"","cal":0,"protein":0,"recipe":[],"groceries":[]}}':type==='lunch'?'{"lunch":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]}}':'{"dinner":{"name":"","description":"","cal":0,"protein":0,"prepNote":"","recipe":[],"groceries":[]}}';
   const recipeNote=isSnack?'Include "recipe" (3–5 steps) only if the snack requires actual prep (protein balls, overnight oats, homemade items). Leave "recipe":[] for grab-and-go items.':'Include a "recipe" array of 5–8 specific steps with quantities.';
   const ctx=`Current plan — Lunch: "${weeklyMealPlan.lunch?.name}", Dinner: "${weeklyMealPlan.dinner?.name}", Snacks: "${(weeklyMealPlan.snacks||[]).map(s=>s.name).join(', ')}". Replace "${current?.name}" with something DIFFERENT. ${recipeNote} Respond ONLY with valid JSON: ${schema}`;
@@ -2847,6 +2854,17 @@ window.toggleGrocery=()=>{
 
 window.regenMealPlan=()=>{
   if(!confirm("Replace current plan with a new suggestion? The old plan will be saved to your archive."))return;
+  // Archive outgoing lunch/dinner individually — same-week regen would otherwise overwrite the history entry and lose them
+  if(weeklyMealPlan){
+    ['lunch','dinner'].forEach(t=>{
+      const m=weeklyMealPlan[t];
+      if(m&&m.name){
+        const entry={...m,mealType:t,savedAt:Date.now()};
+        mealArchivedMeals['am'+entry.savedAt+t]=entry;
+        if(fbPushFn&&fbDb&&fbRefFn)fbPushFn(fbRefFn(fbDb,'mealPlan/archivedMeals'),entry);
+      }
+    });
+  }
   weeklyMealPlan=null;
   if(fbDb&&fbRefFn){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({remove})=>{
@@ -3177,9 +3195,14 @@ window.submitBF=()=>{
 };
 
 try{const _wl=localStorage.getItem('nt5-wl-'+TODAY);if(_wl)workoutLog=JSON.parse(_wl);}catch(e){}
-renderDate();renderMeals();renderActs();renderTasks();
+loadLocal();
+renderDate();renderMeals();renderActs();renderTasks();renderWeekChart();
 loadChatHistory();
-setInterval(renderDate,60000);
+setInterval(()=>{
+  // Day rollover: TODAY is frozen at page load — reload so writes go to the new date key
+  if(new Date().toDateString()!==TODAY){location.reload();return;}
+  renderDate();
+},60000);
 initFirebase();
 fetchGolf();
 setInterval(fetchGolf,5*60*1000);
@@ -3211,6 +3234,7 @@ setInterval(fetchGolf,5*60*1000);
 
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible')return;
+  if(new Date().toDateString()!==TODAY){location.reload();return;}
   const stored=parseInt(localStorage.getItem('nt5-rest-end')||'0');
   if(!stored)return;
   const remaining=Math.ceil((stored-Date.now())/1000);
