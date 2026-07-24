@@ -2429,6 +2429,148 @@ async function fetchPastWorkoutForClaude(dateStr){
 /* ═══════════════════════════════════════════
    MEAL PLAN
 ══════════════════════════════════════════ */
+const SNACK_POOL=[
+  // DAIRY
+  'Greek yogurt (3/4 cup) + mixed berries + 1 tbsp honey',
+  'Greek yogurt (3/4 cup) + granola (1/4 cup) + honey drizzle',
+  "Skyr (3/4 cup, Siggi's or Icelandic Provisions) + blueberries",
+  'Cottage cheese (3/4 cup) + pineapple chunks',
+  'Cottage cheese (3/4 cup) + peach slices + cinnamon',
+  'Cottage cheese (3/4 cup) + cucumber + everything bagel seasoning',
+  'Ricotta (1/2 cup) + honey + almonds on 2 rice cakes',
+  'Chobani Flip yogurt (1 cup)',
+  'Two Good yogurt (1 cup) + walnuts (1 oz)',
+  'Kefir (1 cup) + 1 tbsp chia seeds',
+  'Fairlife chocolate milk (1.5 cups)',
+  'Mozzarella sticks (2) + apple slices',
+  'Babybel rounds (2) + Wasa crackers (3)',
+  'String cheese (2 sticks) + apple slices',
+  'Ratio protein yogurt cup + almonds (1/2 oz)',
+  // PROTEIN BARS
+  'RXBAR (1 bar, any flavor)',
+  'Quest Bar (1 bar, any flavor)',
+  'ONE Bar (1 bar, any flavor)',
+  'Built Bar (1 bar)',
+  'Barebells protein bar (1 bar)',
+  'Kind Protein bar (1 bar)',
+  "Clif Builder's bar (1 bar)",
+  'Think! High Protein bar (1 bar)',
+  'Perfect Bar refrigerated (1 bar)',
+  'Grenade Carb Killa protein bar (1 bar)',
+  // SHAKES & SMOOTHIES
+  'Whey protein shake (1 scoop whey + 1 cup milk, blended)',
+  'Premier Protein RTD shake (1 bottle)',
+  'Fairlife Nutrition Plan shake (1 bottle)',
+  'Core Power protein shake (1 bottle)',
+  'Chocolate protein hot cocoa (1 scoop whey + 1 tbsp cocoa + hot milk)',
+  'PB banana smoothie (1 scoop whey + 1 banana + 1 tbsp PB + 1 cup milk)',
+  'Green protein smoothie (1 scoop whey + handful spinach + 1/2 banana + milk)',
+  'Kefir + banana blended (1 cup kefir + 1 banana)',
+  // MEAT & FISH
+  'Beef jerky (2 oz, Krave or Chomps)',
+  'Turkey jerky (2 oz)',
+  'Salmon jerky (1.5 oz)',
+  'Chomps meat sticks (2 sticks)',
+  'Bison jerky (1.5 oz)',
+  'Deli turkey roll-ups (4 slices turkey + cream cheese)',
+  'Pepperoni slices (1 oz) + provolone cubes (1 oz)',
+  'Prosciutto (1 oz) + cantaloupe (1 cup)',
+  'Rotisserie chicken strips (3 oz, cold) + mustard dip',
+  'Tuna pouch (2.6 oz) + Wasa crackers (3)',
+  'Lemon pepper tuna pouch + 1/2 avocado',
+  'Chicken salad (3 oz) on celery sticks',
+  'Smoked salmon (2 oz) + cream cheese + cucumber rounds',
+  'Sardines (1 can) + whole grain crackers + hot sauce',
+  'Shrimp cocktail (4 oz, pre-cooked cold) + cocktail sauce',
+  // EGGS
+  '2 hard-boiled eggs + hot sauce',
+  '2 hard-boiled eggs + everything bagel seasoning',
+  '3 deviled egg halves (yolk + Greek yogurt + mustard)',
+  'Egg muffin cups (2 mini baked omelets with veggies + cheese)',
+  'Egg salad (2 eggs + Greek yogurt + mustard) + Wasa crackers (3)',
+  'Soft-boiled eggs (2) + soy sauce + sesame seeds',
+  // NUTS & SEEDS
+  'Almonds (1 oz) + dark chocolate chips (1 tbsp)',
+  'Cashews (1 oz) + dried mango (1 oz)',
+  'Mixed nuts (1.5 oz, unsalted)',
+  'Trail mix (1 oz nuts + 1 tbsp dried cranberries + 1 tbsp M&Ms)',
+  'Pistachios in shell (1 oz)',
+  'Walnuts (1 oz) + dried blueberries (1 oz)',
+  'Macadamia nuts (1 oz) + toasted coconut chips',
+  'Pumpkin seeds / pepitas (1 oz, salted)',
+  'Peanut butter (2 tbsp) + celery sticks',
+  'Almond butter (2 tbsp) + apple slices',
+  'Sunflower seed butter (2 tbsp) + 2 rice cakes',
+  'Tahini (1.5 tbsp) + 2 Medjool dates + walnuts (1/2 oz)',
+  // HOMEMADE PREP
+  'Peanut butter protein balls (oats + PB + whey protein + honey, no-bake)',
+  'Almond butter oat bites (oats + almond butter + maple syrup + flax seed)',
+  'No-bake dark chocolate protein bites (whey + coconut oil + cocoa powder)',
+  'No-bake granola bars (oats + PB + honey + chocolate chips)',
+  'Greek yogurt bark (frozen sheet: yogurt + berries + granola)',
+  'Chia pudding (overnight: 3 tbsp chia + 1 cup milk + vanilla + honey)',
+  'Protein cookie dough balls (chickpeas + PB + honey + chocolate chips)',
+  'High-protein overnight oats (oats + Greek yogurt + milk + PB)',
+  'Banana oat protein bites (banana + oats + whey + mini chips, baked)',
+  'Cottage cheese protein bowl (CC blended + cocoa powder + banana)',
+  'Protein rice krispie treats (whey + rice krispies + PB + honey)',
+  'Frozen nice cream (1 frozen banana + 1 tbsp PB, blended)',
+  // VEGGIES & DIP
+  'Carrots (1 cup) + hummus (4 tbsp)',
+  'Bell pepper strips (1 cup) + guacamole (3 tbsp)',
+  'Cucumber rounds + tzatziki (4 tbsp)',
+  'Broccoli florets (1 cup) + ranch dip (3 tbsp)',
+  'Sugar snap peas (1 cup) + hummus (3 tbsp)',
+  'Celery sticks + PB (2 tbsp) + raisins (ants on a log)',
+  'Jicama sticks + tajin + lime',
+  'Cherry tomatoes + mozzarella pearls + basil + balsamic drizzle',
+  'Edamame in pod (1 cup, salted)',
+  'Edamame hummus (4 tbsp) + pita triangles',
+  'Roasted chickpeas (1/2 cup, seasoned)',
+  'Lupini beans (1/2 cup, pickled)',
+  // GRAIN & BREAD
+  '2 rice cakes + PB (2 tbsp) + banana slices',
+  '2 rice cakes + smoked salmon + cream cheese',
+  'Wasa crispbread (3) + avocado + turkey slices',
+  'Wasa (3) + ricotta (3 tbsp) + honey',
+  'Small pita + hummus (3 tbsp) + cucumber',
+  'Whole grain crackers (8) + tuna salad (3 tbsp)',
+  'Protein-dusted popcorn (3 cups)',
+  'Quest protein chips (1 bag)',
+  'Baked lentil chips (1 oz) + salsa',
+  '2 corn tortillas + black beans + salsa',
+  // CHEESE COMBOS
+  'Cheese quesadilla (6-inch corn tortilla + 1.5 oz cheese, pan toasted)',
+  'Manchego (1 oz) + prosciutto (1 oz) + grapes',
+  'Gouda (1 oz) + apple slices + walnuts (1/2 oz)',
+  'Mini Caprese (2 oz fresh mozzarella + tomato + basil)',
+  'Havarti (1 oz) + turkey (1 oz) + mustard on crispbread',
+  'Brie (1 oz) + grapes (1/2 cup) + almonds (1/2 oz)',
+  // FROZEN & COLD TREATS
+  'Yasso Greek yogurt bar (1)',
+  'Enlightened protein ice cream bar (1)',
+  'Halo Top (1/2 cup)',
+  'Frozen Greek yogurt bark (prep: Greek yogurt + berries + honey)',
+  'Protein popsicle (blend Greek yogurt + banana + honey, freeze)',
+  // BONUS COMBOS
+  'Bone broth (1 cup warm) + hard-boiled egg (1)',
+  'Chocolate milk (1 cup) + almonds (1/2 oz)',
+  'String cheese (1) + beef jerky (1 oz)',
+  'Apple + PB (2 tbsp) + string cheese (1)',
+  'Banana + whey protein shake (1/2 scoop + water)',
+];
+
+function pickWeekSnacks(wk){
+  let h=0;
+  for(let i=0;i<wk.length;i++)h=(h*31+wk.charCodeAt(i))>>>0;
+  const n=SNACK_POOL.length;
+  const step=Math.floor(n/3);
+  const i0=h%n;
+  const i1=(i0+step)%n;
+  const i2=(i0+step*2)%n;
+  return[SNACK_POOL[i0],SNACK_POOL[i1],SNACK_POOL[i2]];
+}
+
 function getWeekKey(){
   const d=new Date();
   const jan1=new Date(d.getFullYear(),0,1);
@@ -2438,6 +2580,7 @@ function getWeekKey(){
 
 function buildMealSysPrompt(intakeCal){
   const wk=getWeekKey();
+  const weekSnacks=pickWeekSnacks(wk);
   return`You are a meal planning assistant for Nick, a 28-year-old active guy training 5x/week. Week: ${wk}. Daily intake target: ~${intakeCal} kcal. Breakfast already handled (~850 kcal, ~40g protein).
 
 LUNCH (~450 kcal, ~35g protein): cold/no reheat, prepped ahead. Use the week key above to rotate across the full pool below — treat it as a seed so each week lands on a different section. Pick ONE specific named lunch from a category you haven't used in recent weeks.
@@ -2456,23 +2599,11 @@ Pick ONE specific lunch from this pool. Vary the category from week to week usin
 
 DINNER (~650 kcal, ~50g protein): home-cooked, batch-friendly, under 40 min active prep, same meal all week. Rotate widely across: stir-fries (chicken, beef, shrimp), pasta dishes, tacos/burritos, sheet pan meals, curry (Thai, Indian), grilled proteins with sides, soups/stews, rice bowls, smash burgers, stuffed peppers, salmon or fish dishes, ground turkey skillet, egg-based (frittata, shakshuka), pork tenderloin, chili. Make it a real specific recipe with a name, not just "chicken and rice."
 
-SNACKS (3 suggestions, 150–250 cal, high protein): Pick 3 DIFFERENT snacks each week. Do not repeat snacks used in recent weeks. Use the week key above to seed variety — treat it as a pointer into the list below so different weeks land on different sections. Give specific portions for each.
-
-SNACK POOL — pick from anywhere in this list, rotating across categories week to week:
-DAIRY: Greek yogurt + mixed berries · Greek yogurt + granola + honey · Skyr + blueberries · Cottage cheese + pineapple · Cottage cheese + peach slices · Cottage cheese + cucumber + everything bagel seasoning · Ricotta + honey + almonds on rice cake · Siggi's skyr tube · Icelandic Provisions skyr · Chobani Flip (any flavor) · Two Good yogurt + walnuts · Kefir (plain, 1 cup) · Fairlife chocolate milk (1 cup) · Low-fat mozzarella sticks (2) · Babybel rounds (2) + wasa crackers · Laughing Cow wedges (2) + celery · String cheese + apple slices · Ratio protein yogurt cup
-PROTEIN BARS: RXBAR (any flavor) · Quest Bar · ONE Bar · Built Bar · Barebells protein bar · Kind Protein bar · Clif Builder's bar · Think! High Protein bar · Perfect Bar (refrigerated) · Aloha protein bar · No Cow Bar · Power Crunch bar · Grenade protein bar · Fulfil vitamin protein bar · MusclePharm Combat Crunch bar · Optimum Nutrition Protein Crisp bar · Quest protein cookie · Lenny & Larry's protein cookie · Zone Perfect bar · Nature Valley Protein bar
-SHAKES: Whey + milk blended (1 scoop) · Premier Protein RTD shake · Fairlife Nutrition Plan shake · Core Power shake · Muscle Milk lite shake · Kefir + banana blended · Chocolate protein hot cocoa (whey + cocoa + hot milk) · PB banana protein smoothie (whey + 1 banana + 1 tbsp PB + milk)
-MEAT/FISH: Beef jerky 2 oz (Krave, Jack Links, Chomps) · Turkey jerky 2 oz · Salmon jerky · Bison jerky · Venison jerky · Beef meat sticks (Old Wisconsin, Chomps) · Deli turkey roll-ups + cream cheese (4 rolls) · Pepperoni slices + provolone cubes · Prosciutto + cantaloupe · Rotisserie chicken strips (3 oz, cold) · Tuna pouch + wasa crackers · Lemon pepper tuna pouch + avocado · Chicken salad on celery sticks · Smoked salmon + cream cheese + cucumber rounds · Smoked salmon + wasa + capers · Sardines on whole grain crackers · Canned salmon + avocado mash · Smoked oysters + crackers · Shrimp cocktail 4 oz (pre-cooked, cold) · Crab meat + cream cheese on cucumber
-EGGS: 2 hard-boiled eggs + hot sauce · 2 hard-boiled eggs + everything bagel seasoning · Soft-boiled eggs + soy sauce · Deviled eggs (3 halves) · Egg muffin cups (prep: 2–3 baked mini omelets) · Egg salad + wasa crackers
-NUTS/SEEDS: Almonds (1 oz) + dark chocolate chips · Cashews + dried mango · Mixed nuts (1.5 oz unsalted) · Trail mix (nuts + dried cranberries + M&Ms) · Pistachios in shell (1 oz) · Walnuts + dried blueberries · Macadamia nuts + toasted coconut chips · Pumpkin seeds (pepitas, 1 oz salted) · Sunflower seeds (1.5 oz in shell) · PB2 powder + banana (mix as dip) · Peanut butter (2 tbsp) + celery sticks · Almond butter (2 tbsp) + apple slices · Sunflower seed butter + rice cake · Tahini + dates (2) + walnuts
-HOMEMADE PREP: Peanut butter protein balls (oats + PB + whey + honey) · Almond butter oat bites (oats + AB + maple + flax) · No-bake dark chocolate protein bites (whey + coconut oil + cocoa) · No-bake granola bars (oats + PB + honey + chocolate chips) · Greek yogurt bark (freeze: yogurt + berries + granola) · Chia pudding (overnight: chia + milk + vanilla) · Protein cookie dough balls (chickpea + PB + honey + chocolate chips) · High-protein overnight oats (oats + Greek yogurt + milk + PB) · Banana oat protein bites (banana + oats + whey + mini chips, baked) · Cottage cheese protein bowl (CC + cocoa + banana, blended) · Egg muffin cups (eggs + veggies + cheese, baked in tin)
-VEGGIES + DIP: Carrots + hummus (4 tbsp) · Bell pepper strips + guacamole (2 tbsp) · Cucumber rounds + tzatziki · Broccoli florets + ranch dip · Sugar snap peas + hummus · Celery + PB + raisins (ants on a log) · Jicama sticks + tajin + lime · Cherry tomatoes + mozzarella pearls + basil drizzle · Mini Caprese skewers · Zucchini chips + hummus · Edamame in pod (1 cup, salted) · Edamame hummus + pita triangles · Roasted chickpeas — cinnamon sugar · Roasted chickpeas — ranch · Roasted chickpeas — sea salt vinegar · Lupini beans (pickled, 1/2 cup) · Black bean dip + bell pepper strips
-GRAIN/BREAD: Rice cakes (2) + PB + banana · Rice cakes + smoked salmon + cream cheese · Wasa crispbread + avocado + turkey · Wasa + ricotta + honey · Pita (1 small) + hummus + cucumber · Whole grain crackers + tuna salad · Popcorn (protein dusted, 3 cups) · Quest protein chips · PopCorners protein chips · Baked lentil chips + salsa · Pretzels + PB dip · Corn tortilla + black beans + salsa · Special K protein bar + milk
-CHEESE: Cheese quesadilla (6" corn tortilla + 1 oz cheese) · Cottage cheese + salsa + baked tortilla chips · Manchego + prosciutto (1 oz each) · Gouda + apple + walnuts · Mini Caprese (2 oz fresh mozzarella + tomato) · Havarti + turkey + mustard on crispbread · Brie (1 oz) + grapes + almonds
-FROZEN/COLD TREATS: Yasso Greek yogurt bar · Enlightened protein ice cream bar · Halo Top (1/2 cup serving) · Frozen banana + PB blended (nice cream) · Protein popsicle (blend Greek yogurt + fruit, freeze)
-DRINK-AS-SNACK: Bone broth (1 cup warm, ~10g protein) · Chocolate milk (1 cup) · Green protein smoothie (spinach + banana + whey + milk)
-
-Always include 3 DISTINCT snacks from different categories above. Never repeat a snack from the same category twice in one week's plan.
+SNACKS: Use EXACTLY these 3 snacks this week — they are pre-selected by week key to guarantee no repeats across weeks. Do not substitute them.
+1. ${weekSnacks[0]}
+2. ${weekSnacks[1]}
+3. ${weekSnacks[2]}
+For each snack: estimate cal and protein, write a one-line description, and add a recipe array ONLY if the snack requires actual preparation steps (protein balls, overnight oats, baked bites, etc.). Leave recipe as [] for anything grab-and-go.
 
 Each week should feel meaningfully different from prior weeks. Do not repeat the same lunch or dinner two weeks in a row.${mealPrefs?`\nDislikes/preferences: ${mealPrefs}`:''}`;
 }
