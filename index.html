@@ -990,7 +990,9 @@ async function initFirebase(){
       syncBar.className='sync-bar ok';
     });
     fetchWeeklyData();
-    // Workout log: one-shot read to avoid onValue feedback loop overwriting in-flight saves
+    // Workout log: pre-populate from localStorage so Firebase-empty case can recover lost data
+    try{const lsWl=localStorage.getItem('nt5-wl-'+TODAY);if(lsWl){const p=JSON.parse(lsWl);if(p&&Object.keys(p).length>0)workoutLog=p;}}catch(e){}
+    // One-shot Firebase read — override with Firebase data if present, else push localStorage data up
     const wlRef=ref(fbDb,`workoutLogs/${dateKey}`);
     wlFbRef=wlRef;
     get(wlRef).then(snap=>{
@@ -1016,20 +1018,33 @@ async function initFirebase(){
     // Program week: auto-progress from stored start date
     get(ref(fbDb,'workoutState')).then(snap=>{
       const s=snap.val()||{};
+      const calcStart=(wk)=>{
+        const now=new Date();
+        const dow=now.getDay()||7;
+        const m=new Date(now);
+        m.setDate(now.getDate()-(dow-1)-(wk-1)*7);
+        m.setHours(0,0,0,0);
+        return m.toISOString().split('T')[0];
+      };
       if(s.startDate){
         const startMs=new Date(s.startDate).getTime();
         const weeksSince=Math.floor((Date.now()-startMs)/(7*24*60*60*1000));
-        programWeek=Math.max(1,Math.min(6,weeksSince+1));
+        const autoWeek=Math.max(1,Math.min(6,weeksSince+1));
+        if(s.week&&autoWeek<s.week){
+          // autoWeek is behind stored week — startDate was saved incorrectly, fix it
+          // Only triggers when calculated is LESS than stored (can't happen via natural progression)
+          programWeek=s.week;
+          import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
+            set(ref(fbDb,'workoutState'),{startDate:calcStart(s.week)}).catch(()=>{});
+          });
+        } else {
+          programWeek=autoWeek;
+        }
       } else {
-        const now=new Date();
-        const dow=now.getDay()||7;
-        const monday=new Date(now);
-        monday.setDate(now.getDate()-(dow-1));
-        monday.setHours(0,0,0,0);
-        const startDate=monday.toISOString().split('T')[0];
+        // No startDate — migrate from old week field or default to week 1
         programWeek=s.week||1;
         import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
-          set(ref(fbDb,'workoutState'),{...s,startDate,week:programWeek}).catch(()=>{});
+          set(ref(fbDb,'workoutState'),{startDate:calcStart(programWeek)}).catch(()=>{});
         });
       }
       if(activeTab==='workout')renderWorkout();
@@ -1993,7 +2008,7 @@ function saveProgramWeek(){
     monday.setHours(0,0,0,0);
     const startDate=monday.toISOString().split('T')[0];
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
-      set(fbRefFn(fbDb,'workoutState'),{startDate,week:programWeek}).catch(()=>{});
+      set(fbRefFn(fbDb,'workoutState'),{startDate}).catch(()=>{});
     });
   }
 }
